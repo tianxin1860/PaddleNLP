@@ -33,27 +33,87 @@ from model import ErnieForPretraining, ErnieMLMCriterion
 from data import create_dataloader, transform_fn_dict
 from data import convert_example, convert_chid_example
 from evaluate import do_evaluate, do_evaluate_chid
+from predict import write_fn, do_predict, do_predict_chid, predict_file
 
-# yapf: disable
-parser = argparse.ArgumentParser()
 
-parser.add_argument("--task_name", required=True, type=str, help="The task_name to be evaluated")
-parser.add_argument("--p_embedding_num", type=int, default=1, help="number of p-embedding")
-parser.add_argument("--batch_size", default=32, type=int, help="Batch size per GPU/CPU for training.")
-parser.add_argument("--learning_rate", default=1e-5, type=float, help="The initial learning rate for Adam.")
-parser.add_argument("--save_dir", default='./checkpoint', type=str, help="The output directory where the model checkpoints will be written.")
-parser.add_argument("--max_seq_length", default=128, type=int, help="The maximum total input sequence length after tokenization. "
-    "Sequences longer than this will be truncated, sequences shorter will be padded.")
-parser.add_argument("--weight_decay", default=0.0, type=float, help="Weight decay if we apply some.")
-parser.add_argument("--epochs", default=10, type=int, help="Total number of training epochs to perform.")
-parser.add_argument("--warmup_proportion", default=0.0, type=float, help="Linear warmup proption over the training process.")
-parser.add_argument("--init_from_ckpt", type=str, default=None, help="The path of checkpoint to be loaded.")
-parser.add_argument("--seed", type=int, default=1000, help="random seed for initialization")
-parser.add_argument('--device', choices=['cpu', 'gpu'], default="gpu", help="Select which device to train model, defaults to gpu.")
-parser.add_argument('--save_steps', type=int, default=10000, help="Inteval steps to save checkpoint")
+def parse_args():
+    parser = argparse.ArgumentParser()
 
-args = parser.parse_args()
-# yapf: enable
+    parser.add_argument(
+        "--task_name",
+        required=True,
+        type=str,
+        help="The task_name to be evaluated")
+    parser.add_argument(
+        "--index",
+        required=True,
+        type=str,
+        default="0",
+        help="must be in [0, 1, 2, 3, 4, all]")
+    parser.add_argument(
+        "--p_embedding_num", type=int, default=1, help="number of p-embedding")
+    parser.add_argument(
+        "--batch_size",
+        default=32,
+        type=int,
+        help="Batch size per GPU/CPU for training.")
+    parser.add_argument(
+        "--learning_rate",
+        default=1e-5,
+        type=float,
+        help="The initial learning rate for Adam.")
+    parser.add_argument(
+        "--save_dir",
+        default='./checkpoint',
+        type=str,
+        help="The output directory where the model checkpoints will be written.")
+    parser.add_argument(
+        "--predict_output_dir",
+        default='./predict_output',
+        type=str,
+        help="The output directory where to save predict_output")
+    parser.add_argument(
+        "--max_seq_length",
+        default=128,
+        type=int,
+        help="The maximum total input sequence length after tokenization. "
+        "Sequences longer than this will be truncated, sequences shorter will be padded."
+    )
+    parser.add_argument(
+        "--weight_decay",
+        default=0.0,
+        type=float,
+        help="Weight decay if we apply some.")
+    parser.add_argument(
+        "--epochs",
+        default=10,
+        type=int,
+        help="Total number of training epochs to perform.")
+    parser.add_argument(
+        "--warmup_proportion",
+        default=0.0,
+        type=float,
+        help="Linear warmup proption over the training process.")
+    parser.add_argument(
+        "--init_from_ckpt",
+        type=str,
+        default=None,
+        help="The path of checkpoint to be loaded.")
+    parser.add_argument(
+        "--seed", type=int, default=1000, help="random seed for initialization")
+    parser.add_argument(
+        '--device',
+        choices=['cpu', 'gpu'],
+        default="gpu",
+        help="Select which device to train model, defaults to gpu.")
+    parser.add_argument(
+        '--save_steps',
+        type=int,
+        default=10000,
+        help="Inteval steps to save checkpoint")
+
+    args = parser.parse_args()
+    return args
 
 
 def set_seed(seed):
@@ -63,7 +123,7 @@ def set_seed(seed):
     paddle.seed(seed)
 
 
-def do_train():
+def do_train(args):
     paddle.set_device(args.device)
     rank = paddle.distributed.get_rank()
     if paddle.distributed.get_world_size() > 1:
@@ -80,15 +140,22 @@ def do_train():
 
     convert_example_fn = convert_example if args.task_name != "chid" else convert_chid_example
     evaluate_fn = do_evaluate if args.task_name != "chid" else do_evaluate_chid
+    predict_fn = do_predict if args.task_name != "chid" else do_predict_chid
 
-    train_ds, dev_ds, public_test_ds = load_dataset(
+    train_ds, dev_ds, test_ds = load_dataset(
         "fewclue",
         name=args.task_name,
-        splits=("train_0", "dev_0", "test_public"))
+        splits=("train_" + args.index, "dev_" + args.index, "test"))
 
     # Task related transform operations, eg: numbert label -> text_label, english -> chinese
     transform_fn = partial(
         transform_fn_dict[args.task_name], label_normalize_dict=label_norm_dict)
+
+    # Task related transform operations, eg: numbert label -> text_label, english -> chinese
+    predict_transform_fn = partial(
+        transform_fn_dict[args.task_name],
+        label_normalize_dict=label_norm_dict,
+        is_test=True)
 
     # Some fewshot_learning strategy is defined by transform_fn
     # Note: Set lazy=True to transform example inplace immediately,
@@ -96,7 +163,7 @@ def do_train():
     # iterate multi-times for train_ds
     train_ds = train_ds.map(transform_fn, lazy=False)
     dev_ds = dev_ds.map(transform_fn, lazy=False)
-    public_test_ds = public_test_ds.map(transform_fn, lazy=False)
+    test_ds = test_ds.map(predict_transform_fn, lazy=False)
 
     model = ErnieForPretraining.from_pretrained('ernie-1.0')
 
@@ -110,6 +177,13 @@ def do_train():
             Stack(dtype="int64"),  # masked_positions
             Stack(dtype="int64"),  # masked_lm_labels
         ): [data for data in fn(samples)]
+
+        # [src_ids, token_type_ids, masked_positions]
+        predict_batchify_fn = lambda samples, fn=Tuple(
+            Pad(axis=0, pad_val=tokenizer.pad_token_id),  # src_ids
+            Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # token_type_ids
+            Stack(dtype="int64"),  # masked_positions
+        ): [data for data in fn(samples)]
     else:
         # [src_ids, token_type_ids, masked_positions, masked_lm_labels, candidate_labels_ids]
         batchify_fn = lambda samples, fn=Tuple(
@@ -120,11 +194,26 @@ def do_train():
             Stack(dtype="int64"),  # candidate_labels_ids [candidate_num, label_length]
         ): [data for data in fn(samples)]
 
+        # [src_ids, token_type_ids, masked_positions, masked_lm_labels, candidate_labels_ids]
+        predict_batchify_fn = lambda samples, fn=Tuple(
+            Pad(axis=0, pad_val=tokenizer.pad_token_id),  # src_ids
+            Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # token_type_ids
+            Stack(dtype="int64"),  # masked_positions
+            Stack(dtype="int64"),  # candidate_labels_ids [candidate_num, label_length]
+        ): [data for data in fn(samples)]
+
     trans_func = partial(
         convert_example_fn,
         tokenizer=tokenizer,
         max_seq_length=args.max_seq_length,
         p_embedding_num=args.p_embedding_num)
+
+    trans_func_test = partial(
+        convert_example_fn,
+        tokenizer=tokenizer,
+        max_seq_length=args.max_seq_length,
+        p_embedding_num=args.p_embedding_num,
+        is_test=True)
 
     train_data_loader = create_dataloader(
         train_ds,
@@ -140,12 +229,12 @@ def do_train():
         batchify_fn=batchify_fn,
         trans_fn=trans_func)
 
-    public_test_data_loader = create_dataloader(
-        public_test_ds,
+    test_data_loader = create_dataloader(
+        test_ds,
         mode='eval',
         batch_size=args.batch_size,
-        batchify_fn=batchify_fn,
-        trans_fn=trans_func)
+        batchify_fn=predict_batchify_fn,
+        trans_fn=trans_func_test)
 
     if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
         state_dict = paddle.load(args.init_from_ckpt)
@@ -205,19 +294,27 @@ def do_train():
                                               label_norm_dict)
         print("epoch:{}, dev_accuracy:{:.3f}, total_num:{}".format(
             epoch, dev_accuracy, total_num))
-        test_accuracy, total_num = evaluate_fn(
-            model, tokenizer, public_test_data_loader, label_norm_dict)
-        print("epoch:{}, test_accuracy:{:.3f}, total_num:{}".format(
-            epoch, test_accuracy, total_num))
 
-        if rank == 0:
-            save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
-            save_param_path = os.path.join(save_dir, 'model_state.pdparams')
-            paddle.save(model.state_dict(), save_param_path)
-            tokenizer.save_pretrained(save_dir)
+        y_pred_labels = predict_fn(model, tokenizer, test_data_loader,
+                                   label_norm_dict)
+
+        if not os.path.exists(args.predict_output_dir):
+            os.makedirs(args.predict_output_dir)
+        output_file = os.path.join(args.predict_output_dir,
+                                   "index" + args.index + str(epoch) + "epoch_"
+                                   + predict_file[args.task_name])
+
+        write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
+
+        # if rank == 0:
+        #     save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
+        #     if not os.path.exists(save_dir):
+        #         os.makedirs(save_dir)
+        #     save_param_path = os.path.join(save_dir, 'model_state.pdparams')
+        #     paddle.save(model.state_dict(), save_param_path)
+        #     tokenizer.save_pretrained(save_dir)
 
 
 if __name__ == "__main__":
-    do_train()
+    args = parse_args()
+    do_train(args)

@@ -54,6 +54,7 @@ class ErnieForPretraining(ErniePretrainedModel):
             # new_masked_positions: [bs * label_length, 1]
             new_masked_positions = np.array(new_masked_positions).astype(
                 'int32')
+
             new_masked_positions = paddle.to_tensor(new_masked_positions)
 
             prediction_scores, seq_relationship_score = self.cls(

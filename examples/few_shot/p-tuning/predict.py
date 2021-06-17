@@ -33,22 +33,54 @@ from data import create_dataloader, transform_fn_dict
 from data import convert_example, convert_chid_example
 from evaluate import do_evaluate, do_evaluate_chid
 
-# yapf: disable
-parser = argparse.ArgumentParser()
 
-parser.add_argument("--task_name", required=True, type=str, help="The task_name to be evaluated")
-parser.add_argument("--p_embedding_num", type=int, default=1, help="number of p-embedding")
-parser.add_argument("--batch_size", default=32, type=int, help="Batch size per GPU/CPU for training.")
-parser.add_argument("--max_seq_length", default=128, type=int, help="The maximum total input sequence length after tokenization. "
-    "Sequences longer than this will be truncated, sequences shorter will be padded.")
-parser.add_argument("--init_from_ckpt", type=str, default=None, help="The path of checkpoint to be loaded.")
-parser.add_argument("--output_dir", type=str, default=None, help="The path of checkpoint to be loaded.")
-parser.add_argument("--seed", type=int, default=1000, help="random seed for initialization")
-parser.add_argument('--device', choices=['cpu', 'gpu'], default="gpu", help="Select which device to train model, defaults to gpu.")
-parser.add_argument('--save_steps', type=int, default=10000, help="Inteval steps to save checkpoint")
+def parse_args():
+    parser = argparse.ArgumentParser()
 
-args = parser.parse_args()
-# yapf: enable
+    parser.add_argument(
+        "--task_name",
+        required=True,
+        type=str,
+        help="The task_name to be evaluated")
+    parser.add_argument(
+        "--p_embedding_num", type=int, default=1, help="number of p-embedding")
+    parser.add_argument(
+        "--batch_size",
+        default=32,
+        type=int,
+        help="Batch size per GPU/CPU for training.")
+    parser.add_argument(
+        "--max_seq_length",
+        default=128,
+        type=int,
+        help="The maximum total input sequence length after tokenization. "
+        "Sequences longer than this will be truncated, sequences shorter will be padded."
+    )
+    parser.add_argument(
+        "--init_from_ckpt",
+        type=str,
+        default=None,
+        help="The path of checkpoint to be loaded.")
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default=None,
+        help="The path of checkpoint to be loaded.")
+    parser.add_argument(
+        "--seed", type=int, default=1000, help="random seed for initialization")
+    parser.add_argument(
+        '--device',
+        choices=['cpu', 'gpu'],
+        default="gpu",
+        help="Select which device to train model, defaults to gpu.")
+    parser.add_argument(
+        '--save_steps',
+        type=int,
+        default=10000,
+        help="Inteval steps to save checkpoint")
+
+    args = parser.parse_args()
+    return args
 
 
 def set_seed(seed):
@@ -188,7 +220,7 @@ predict_file = {
 
 def write_iflytek(task_name, output_file, pred_labels):
     test_ds, train_few_all = load_dataset(
-        "fewclue", name=args.task_name, splits=("test", "train_few_all"))
+        "fewclue", name="iflytek", splits=("test", "train_few_all"))
 
     def label2id(train_few_all):
         label2id = {}
@@ -212,7 +244,7 @@ def write_iflytek(task_name, output_file, pred_labels):
 
 
 def write_bustm(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name=args.task_name, splits=("test"))
+    test_ds = load_dataset("fewclue", name="bustm", splits=("test"))
     test_example = {}
     with open(output_file, 'w', encoding='utf-8') as f:
         for idx, example in enumerate(test_ds):
@@ -223,7 +255,7 @@ def write_bustm(task_name, output_file, pred_labels):
 
 
 def write_csldcp(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name=args.task_name, splits=("test"))
+    test_ds = load_dataset("fewclue", name="csldcp", splits=("test"))
     test_example = {}
 
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -238,7 +270,7 @@ def write_csldcp(task_name, output_file, pred_labels):
 
 def write_tnews(task_name, output_file, pred_labels):
     test_ds, train_few_all = load_dataset(
-        "fewclue", name=args.task_name, splits=("test", "train_few_all"))
+        "fewclue", name="tnews", splits=("test", "train_few_all"))
 
     def label2id(train_few_all):
         label2id = {}
@@ -262,7 +294,7 @@ def write_tnews(task_name, output_file, pred_labels):
 
 
 def write_cluewsc(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name=args.task_name, splits=("test"))
+    test_ds = load_dataset("fewclue", name="cluewsc", splits=("test"))
     test_example = {}
     with open(output_file, 'w', encoding='utf-8') as f:
         for idx, example in enumerate(test_ds):
@@ -275,7 +307,7 @@ def write_cluewsc(task_name, output_file, pred_labels):
 
 
 def write_eprstmt(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name=args.task_name, splits=("test"))
+    test_ds = load_dataset("fewclue", name="eprstmt", splits=("test"))
     test_example = {}
     with open(output_file, 'w', encoding='utf-8') as f:
         for idx, example in enumerate(test_ds):
@@ -287,7 +319,7 @@ def write_eprstmt(task_name, output_file, pred_labels):
 
 
 def write_ocnli(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name=args.task_name, splits=("test"))
+    test_ds = load_dataset("fewclue", name="ocnli", splits=("test"))
     test_example = {}
     with open(output_file, 'w', encoding='utf-8') as f:
         for idx, example in enumerate(test_ds):
@@ -298,7 +330,7 @@ def write_ocnli(task_name, output_file, pred_labels):
 
 
 def write_csl(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name=args.task_name, splits=("test"))
+    test_ds = load_dataset("fewclue", name="csl", splits=("test"))
     test_example = {}
     with open(output_file, 'w', encoding='utf-8') as f:
         for idx, example in enumerate(test_ds):
@@ -309,7 +341,7 @@ def write_csl(task_name, output_file, pred_labels):
 
 
 def write_chid(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name=args.task_name, splits=("test"))
+    test_ds = load_dataset("fewclue", name="chid", splits=("test"))
     test_example = {}
     with open(output_file, 'w', encoding='utf-8') as f:
         for idx, example in enumerate(test_ds):
@@ -333,6 +365,8 @@ write_fn = {
 }
 
 if __name__ == "__main__":
+    args = parse_args()
+
     paddle.set_device(args.device)
     set_seed(args.seed)
 
@@ -405,6 +439,7 @@ if __name__ == "__main__":
 
     y_pred_labels = predict_fn(model, tokenizer, test_data_loader,
                                label_norm_dict)
+
     output_file = os.path.join(args.output_dir, predict_file[args.task_name])
 
     write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
