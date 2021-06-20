@@ -68,10 +68,10 @@ def parse_args():
         type=str,
         help="The output directory where the model checkpoints will be written.")
     parser.add_argument(
-        "--predict_output_dir",
-        default='./predict_output',
+        "--output_dir",
+        default='./output',
         type=str,
-        help="The output directory where to save predict_output")
+        help="The output directory where to save output")
     parser.add_argument(
         "--max_seq_length",
         default=128,
@@ -298,11 +298,11 @@ def do_train(args):
         y_pred_labels = predict_fn(model, tokenizer, test_data_loader,
                                    label_norm_dict)
 
-        if not os.path.exists(args.predict_output_dir):
-            os.makedirs(args.predict_output_dir)
-        output_file = os.path.join(args.predict_output_dir,
-                                   "index" + args.index + str(epoch) + "epoch_"
-                                   + predict_file[args.task_name])
+        if not os.path.exists(args.output_dir):
+            os.makedirs(args.output_dir)
+        output_file = os.path.join(args.output_dir,
+                                   "index" + args.index + "_" + str(epoch) +
+                                   "epoch_" + predict_file[args.task_name])
 
         write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
 
