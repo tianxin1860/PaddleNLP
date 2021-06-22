@@ -118,12 +118,13 @@ def do_predict(model, tokenizer, data_loader, label_normalize_dict):
         #     masked_positions=masked_positions)
 
         # [bs * label_length, vocab_size]
-        prediction_probs, _ = model(
+        prediction_scores, _ = model(
             input_ids=src_ids,
             token_type_ids=token_type_ids,
             masked_positions=masked_positions)
 
-        print("prediction_probs:{}".format(prediction_probs))
+        softmax_fn = paddle.nn.Softmax()
+        prediction_probs = softmax_fn(prediction_scores)
 
         batch_size = len(src_ids)
         vocab_size = prediction_probs.shape[1]

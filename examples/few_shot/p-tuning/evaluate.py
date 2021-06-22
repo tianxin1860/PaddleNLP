@@ -39,10 +39,14 @@ def do_evaluate(model, tokenizer, data_loader, label_normalize_dict):
         #     input_ids=src_ids,
         #     token_type_ids=token_type_ids,
         #     masked_positions=masked_positions)
-        prediction_probs, _ = model(
+
+        prediction_scores, _ = model(
             input_ids=src_ids,
             token_type_ids=token_type_ids,
             masked_positions=masked_positions)
+
+        softmax_fn = paddle.nn.Softmax()
+        prediction_probs = softmax_fn(prediction_scores)
 
         batch_size = len(src_ids)
         vocab_size = prediction_probs.shape[1]
