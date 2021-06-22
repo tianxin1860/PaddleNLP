@@ -43,6 +43,11 @@ def parse_args():
         type=str,
         help="The task_name to be evaluated")
     parser.add_argument(
+        "--language_model",
+        required=True,
+        type=str,
+        help="The model name to be used")
+    parser.add_argument(
         "--batch_size",
         default=32,
         type=int,
@@ -129,9 +134,14 @@ def do_train():
         name=args.task_name,
         splits=("train_0", "test_public", "test"))
 
-    model = ppnlp.transformers.ErnieForSequenceClassification.from_pretrained(
-        'ernie-1.0', num_classes=2)
-    tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
+    #model = ppnlp.transformers.ErnieForSequenceClassification.from_pretrained(
+    #    'ernie-1.0', num_classes=2)
+    #tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
+
+    model = ppnlp.transformers.BertForSequenceClassification.from_pretrained(
+        args.language_model)
+    tokenizer = ppnlp.transformers.BertTokenizer.from_pretrained(
+        args.language_model)
 
     processor = processor_dict[args.task_name](args.negative_num)
     train_ds = processor.get_train_datasets(train_ds,
