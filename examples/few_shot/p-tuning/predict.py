@@ -112,10 +112,18 @@ def do_predict(model, tokenizer, data_loader, label_normalize_dict):
         src_ids, token_type_ids, masked_positions = batch
 
         # [bs * label_length, vocab_size]
-        prediction_probs = model.predict(
+        # prediction_probs = model.predict(
+        #     input_ids=src_ids,
+        #     token_type_ids=token_type_ids,
+        #     masked_positions=masked_positions)
+
+        # [bs * label_length, vocab_size]
+        prediction_probs, _ = model(
             input_ids=src_ids,
             token_type_ids=token_type_ids,
             masked_positions=masked_positions)
+
+        print("prediction_probs:{}".format(prediction_probs))
 
         batch_size = len(src_ids)
         vocab_size = prediction_probs.shape[1]

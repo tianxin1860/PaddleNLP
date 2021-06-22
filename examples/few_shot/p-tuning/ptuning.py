@@ -45,6 +45,11 @@ def parse_args():
         type=str,
         help="The task_name to be evaluated")
     parser.add_argument(
+        "--language_model",
+        required=True,
+        type=str,
+        help="The model name to be used")
+    parser.add_argument(
         "--index",
         required=True,
         type=str,
@@ -165,9 +170,13 @@ def do_train(args):
     dev_ds = dev_ds.map(transform_fn, lazy=False)
     test_ds = test_ds.map(predict_transform_fn, lazy=False)
 
-    model = ErnieForPretraining.from_pretrained('ernie-1.0')
+    #model = ErnieForPretraining.from_pretrained('ernie-1.0')
+    #tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
 
-    tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
+    model = ppnlp.transformers.BertForPretraining.from_pretrained(
+        args.language_model)
+    tokenizer = ppnlp.transformers.BertTokenizer.from_pretrained(
+        args.language_model)
 
     if args.task_name != "chid":
         # [src_ids, token_type_ids, masked_positions, masked_lm_labels]
@@ -271,7 +280,7 @@ def do_train(args):
             masked_positions = batch[2]
             masked_lm_labels = batch[3]
 
-            prediction_scores = model(
+            prediction_scores, _ = model(
                 input_ids=src_ids,
                 token_type_ids=token_type_ids,
                 masked_positions=masked_positions)

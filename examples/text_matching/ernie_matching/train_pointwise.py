@@ -97,10 +97,15 @@ def do_train():
     # tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
     # pretrained_model = ppnlp.transformers.ErnieModel.from_pretrained("ernie-1.0")
 
-    pretrained_model = ppnlp.transformers.ErnieGramModel.from_pretrained(
-        'ernie-gram-zh')
-    tokenizer = ppnlp.transformers.ErnieGramTokenizer.from_pretrained(
-        'ernie-gram-zh')
+    #pretrained_model = ppnlp.transformers.ErnieGramModel.from_pretrained(
+    #    'ernie-gram-zh')
+    #tokenizer = ppnlp.transformers.ErnieGramTokenizer.from_pretrained(
+    #    'ernie-gram-zh')
+
+    pretrained_model = ppnlp.transformers.BertModel.from_pretrained(
+        'macbert-large-chinese')
+    tokenizer = ppnlp.transformers.BertTokenizer.from_pretrained(
+        'macbert-large-chinese')
 
     trans_func = partial(
         convert_example,
