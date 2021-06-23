@@ -109,7 +109,7 @@ def parse_args():
     parser.add_argument(
         '--save_steps',
         type=int,
-        default=10000,
+        default=10000000,
         help="Inteval steps to save checkpoint")
     return parser.parse_args()
 
@@ -223,6 +223,9 @@ def do_train():
 
     global_step = 0
     tic_train = time.time()
+
+    max_dev_acc = 0.0
+
     for epoch in range(1, args.epochs + 1):
         model.train()
         for step, batch in enumerate(train_data_loader, start=1):
@@ -264,17 +267,21 @@ def do_train():
         print("epoch:{}, dev_accuracy:{:.3f}, total_num:{}".format(
             epoch, test_public_accuracy, total_num))
 
-        y_pred_labels = do_predict(
-            model,
-            tokenizer,
-            test_data_loader,
-            task_label_description=TASK_LABELS_DESC[args.task_name])
+        if test_public_accuracy > max_dev_acc:
+            y_pred_labels = do_predict(
+                model,
+                tokenizer,
+                test_data_loader,
+                task_label_description=TASK_LABELS_DESC[args.task_name])
 
-        output_file = os.path.join(args.output_dir,
-                                   str(epoch) + predict_file[args.task_name])
+            output_file = os.path.join(args.output_dir,
+                                    str(epoch) + predict_file[args.task_name])
+            print("[save predict_result]:{}".format(output_file))
+            write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
 
-        write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
+            max_dev_acc = test_public_accuracy
 
+"""
         if rank == 0:
             save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
             if not os.path.exists(save_dir):
@@ -282,6 +289,7 @@ def do_train():
             save_param_path = os.path.join(save_dir, 'model_state.pdparams')
             paddle.save(model.state_dict(), save_param_path)
             tokenizer.save_pretrained(save_dir)
+"""
 
 
 if __name__ == "__main__":
