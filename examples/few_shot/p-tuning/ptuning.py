@@ -281,10 +281,21 @@ def do_train(args):
             masked_positions = batch[2]
             masked_lm_labels = batch[3]
 
+            max_len = src_ids.shape[1]
+            new_masked_positions = []
+            # masked_positions: [bs, label_length]
+            for bs_index, mask_pos in enumerate(masked_positions.numpy()):
+                for pos in mask_pos:
+                    new_masked_positions.append(bs_index * max_len + pos)
+            # new_masked_positions: [bs * label_length, 1]
+            new_masked_positions = np.array(new_masked_positions).astype(
+                'int32')
+            new_masked_positions = paddle.to_tensor(new_masked_positions)
+
             prediction_scores, _ = model(
                 input_ids=src_ids,
                 token_type_ids=token_type_ids,
-                masked_positions=masked_positions)
+                masked_positions=new_masked_positions)
 
             loss = mlm_loss_fn(prediction_scores, masked_lm_labels)
 
