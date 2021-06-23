@@ -83,7 +83,7 @@ def convert_example(example,
     mask_ids = tokenizer.convert_tokens_to_ids(mask_tokens)
 
     # Step2: gen p_token_ids
-    p_tokens = ["[unused{}]".format(i) for i in range(p_embedding_num)]
+    p_tokens = ["[unused{}]".format(i + 1) for i in range(p_embedding_num)]
     p_token_ids = tokenizer.convert_tokens_to_ids(p_tokens)
 
     # Step3: Insert "[MASK]" to src_ids based on start_mask_position

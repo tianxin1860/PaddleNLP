@@ -41,7 +41,9 @@ class BasicTokenizer(object):
 
         self.do_lower_case = do_lower_case
 
-    def tokenize(self, text):
+    def tokenize(self,
+                 text,
+                 no_split_special_tokens=['[CLS]', '[PAD]', '[MASK]', '[UNK]']):
         """
         Tokenizes a piece of text using basic tokenizer.
         Args:
@@ -59,7 +61,12 @@ class BasicTokenizer(object):
             if self.do_lower_case:
                 token = token.lower()
                 token = self._run_strip_accents(token)
-            split_tokens.extend(self._run_split_on_punc(token))
+
+            if token not in no_split_special_tokens:
+                split_tokens.extend(self._run_split_on_punc(token))
+            else:
+                # not split special tokens
+                split_tokens.extend([token])
 
         output_tokens = whitespace_tokenize(" ".join(split_tokens))
         return output_tokens
