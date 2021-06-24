@@ -331,6 +331,8 @@ def do_train(args):
 
             write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
 
+            max_dev_acc = dev_accuracy
+
         # if rank == 0:
         #     save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
         #     if not os.path.exists(save_dir):
