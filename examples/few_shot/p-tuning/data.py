@@ -146,12 +146,12 @@ def convert_chid_example(example,
         mask_lm_labels(obj: `list[int]`): The list of mask_lm_labels.
         mask_lm_labels(obj: `list[int]`): The list of mask_lm_labels.
     """
-    # FewClue Task `Chid`' label's position must be calculated by special token: "淠"
+    # FewClue Task `Chid`' label's position must be calculated by special token: "饑"
     seg_tokens = tokenizer.tokenize(example["sentence1"])
 
     # find insert position of `[MASK]`
-    start_mask_position = seg_tokens.index("淠") + 1
-    seg_tokens.remove("淠")
+    start_mask_position = seg_tokens.index("饑") + 1
+    seg_tokens.remove("饑")
     sentence1 = "".join(seg_tokens)
     candidates = example["candidates"]
     candidate_labels_ids = [
@@ -356,7 +356,7 @@ def transform_chid(example, label_normalize_dict=None, is_test=False):
 
     if is_test:
         example["label_length"] = 4
-        example["sentence1"] = example["content"].replace("#idiom#", "淠")
+        example["sentence1"] = example["content"].replace("#idiom#", "饑")
         del example["content"]
 
         return example
@@ -367,7 +367,7 @@ def transform_chid(example, label_normalize_dict=None, is_test=False):
 
         # Note: `#idom#` represent a idom which must be replaced with rarely-used Chinese characters
         # to get the label's position after the text processed by tokenizer
-        example["sentence1"] = example["content"].replace("#idiom#", "淠")
+        example["sentence1"] = example["content"].replace("#idiom#", "饑")
         del example["content"]
 
         return example

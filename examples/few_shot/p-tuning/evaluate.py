@@ -111,11 +111,28 @@ def do_evaluate_chid(model, tokenizer, data_loader, label_normalize_dict):
     for batch in data_loader:
         src_ids, token_type_ids, masked_positions, masked_lm_labels, candidate_label_ids = batch
 
-        # [bs * label_length, vocab_size]
-        prediction_probs = model.predict(
+        max_len = src_ids.shape[1]
+        new_masked_positions = []
+        # masked_positions: [bs, label_length]
+        for bs_index, mask_pos in enumerate(masked_positions.numpy()):
+            for pos in mask_pos:
+                new_masked_positions.append(bs_index * max_len + pos)
+        # new_masked_positions: [bs * label_length, 1]
+        new_masked_positions = np.array(new_masked_positions).astype('int32')
+        new_masked_positions = paddle.to_tensor(new_masked_positions)
+
+        prediction_scores, _ = model(
             input_ids=src_ids,
             token_type_ids=token_type_ids,
-            masked_positions=masked_positions)
+            masked_positions=new_masked_positions)
+        softmax_fn = paddle.nn.Softmax()
+        prediction_probs = softmax_fn(prediction_scores)
+
+        # [bs * label_length, vocab_size]
+        # prediction_probs = model.predict(
+        #     input_ids=src_ids,
+        #     token_type_ids=token_type_ids,
+        #     masked_positions=masked_positions)
 
         batch_size = len(src_ids)
         vocab_size = prediction_probs.shape[1]
