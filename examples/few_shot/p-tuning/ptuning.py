@@ -271,6 +271,7 @@ def do_train(args):
         apply_decay_param_fun=lambda x: x in decay_params)
 
     global_step = 0
+    max_dev_acc = 0.0
     tic_train = time.time()
     for epoch in range(1, args.epochs + 1):
         model.train()
@@ -316,16 +317,19 @@ def do_train(args):
         print("epoch:{}, dev_accuracy:{:.3f}, total_num:{}".format(
             epoch, dev_accuracy, total_num))
 
-        y_pred_labels = predict_fn(model, tokenizer, test_data_loader,
-                                   label_norm_dict)
+        if dev_accuracy > max_dev_acc:
+            y_pred_labels = predict_fn(model, tokenizer, test_data_loader,
+                                    label_norm_dict)
 
-        if not os.path.exists(args.output_dir):
-            os.makedirs(args.output_dir)
-        output_file = os.path.join(args.output_dir,
-                                   "index" + args.index + "_" + str(epoch) +
-                                   "epoch_" + predict_file[args.task_name])
+            if not os.path.exists(args.output_dir):
+                os.makedirs(args.output_dir)
+            output_file = os.path.join(args.output_dir,
+                                    "index" + args.index + "_" + str(epoch) +
+                                    "epoch_" + predict_file[args.task_name])
+                                    
+            print("[save predict_result]{}".format(output_file))
 
-        write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
+            write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
 
         # if rank == 0:
         #     save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
