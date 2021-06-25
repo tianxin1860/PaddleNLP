@@ -114,7 +114,7 @@ def parse_args():
     parser.add_argument(
         '--save_steps',
         type=int,
-        default=10000,
+        default=10000000000,
         help="Inteval steps to save checkpoint")
 
     args = parser.parse_args()
@@ -150,8 +150,8 @@ def do_train(args):
     train_ds, dev_ds, test_ds = load_dataset(
         "fewclue",
         name=args.task_name,
-        splits=("train_" + args.index, "test_public", "test"))
-    #splits=("train_" + args.index, "dev_" + args.index, "test"))
+        splits=("train_" + args.index, "dev_" + args.index, "test"))
+        #splits=("train_" + args.index, "test_public", "test"))
 
     # Task related transform operations, eg: numbert label -> text_label, english -> chinese
     transform_fn = partial(
