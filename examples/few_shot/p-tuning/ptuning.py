@@ -20,6 +20,7 @@ import time
 import json
 import math
 from functools import partial
+import gc
 
 from tqdm import tqdm
 import numpy as np
@@ -187,17 +188,17 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
     #     name=args.task_name,
     #     splits=("train_" + args.index, "dev_" + args.index, "test", "unlabeled"))
 
-    # train_ds, dev_ds, test_ds, unlabeled_ds = load_dataset(
-    #     "fewclue",
-    #     name=args.task_name,
-    #     splits=("train_" + args.index, "test_public", "test", "unlabeled"))
-
-    train_ds, dev_ds, test_ds = load_dataset(
+    train_ds, dev_ds, test_ds, unlabeled_ds = load_dataset(
         "fewclue",
         name=args.task_name,
-        splits=("train_" + args.index, "dev_" + args.index, "test"))
+        splits=("train_" + args.index, "test_public", "test", "unlabeled"))
 
-    unlabeled_ds = load_dataset("fewclue", name=args.task_name, data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
+    # train_ds, dev_ds, test_ds = load_dataset(
+    #     "fewclue",
+    #     name=args.task_name,
+    #     splits=("train_" + args.index, "dev_" + args.index, "test"))
+
+    # unlabeled_ds = load_dataset("fewclue", name=args.task_name, data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
 
     if unlabeled_file:
         print("load_unlabeled_file:{}".format(unlabeled_file))
@@ -542,10 +543,10 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
             return None
         else:
             return {'unlabeled_file': output_file,
-                    'history_max_acc': max_dev_acc, 
-                    'best_checkpoint': best_checkpoint,
-                    'last_train': False,
-                    'pretrained_model': model }
+                'history_max_acc': max_dev_acc, 
+                'best_checkpoint': best_checkpoint,
+                'last_train': False,
+                'pretrained_model': model}
     else:
         # Stop training
         print("Stop training at iter_num:{} ********************************".format(iter_num))
@@ -571,13 +572,20 @@ if __name__ == "__main__":
             if kwargs['unlabeled_file']:
                 all_unlabdled_files.append(kwargs['unlabeled_file'])
                 print("all_unlabdled_files:{}".format(all_unlabdled_files))
+            else:
+                # last_train = True
+                kwargs = do_train(args, iter_num, **kwargs)
+                break
+
             if len(all_unlabdled_files) > 1:
                 # ensemble unlabeled.json
                 print("start ensemble:{}".format(all_unlabdled_files))
                 ensembled_unlabeled_json = ensemble(all_unlabdled_files, ensemble_dict[args.task_name], iter_num=iter_num, confidence=args.confidence)
                 kwargs['unlabeled_file'] = ensembled_unlabeled_json
                 all_unlabdled_files.append(ensembled_unlabeled_json)
+
             kwargs = do_train(args, iter_num, **kwargs)
+            gc.collect()
             iter_num += 1
         else:
             break

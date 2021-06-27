@@ -245,11 +245,13 @@ def transform_iflytek(example, label_normalize_dict=None, is_test=False):
         return example
 
 
-def transform_tnews(example, label_normalize_dict=None, is_test=False):
+def transform_tnews(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 2
-        example["sentence1"] = u'这是一条关于[UNK]的新闻，' + example["sentence"]
-        # example["sentence1"] = example["sentence"]
+        if pattern_id == 0:
+            example["sentence1"] = u'这是一条关于[UNK]的新闻，' + example["sentence"]
+        elif pattern_id == 1:
+            example["sentence1"] = u'下面报道一则[UNK]新闻，' + example["sentence"]
         del example["sentence"]
         return example
     else:
@@ -257,7 +259,10 @@ def transform_tnews(example, label_normalize_dict=None, is_test=False):
         # Normalize some of the labels, eg. English -> Chinese
         example['label_desc'] = label_normalize_dict[origin_label]
 
-        example["sentence1"] = u'这是一条关于[UNK]的新闻，' + example["sentence"]
+        if pattern_id == 0:
+            example["sentence1"] = u'这是一条关于[UNK]的新闻，' + example["sentence"]
+        elif pattern_id == 1:
+            example["sentence1"] = u'下面报道一则[UNK]新闻，' + example["sentence"]
         # example["sentence1"] = example["sentence"]
         example["text_label"] = example["label_desc"]
 
@@ -352,7 +357,7 @@ def transform_csldcp(example, label_normalize_dict=None, is_test=False):
         return example
 
 
-def transform_bustm(example, label_normalize_dict=None, is_test=False):
+def transform_bustm(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         # Label: ["很"， "不"]
         example["label_length"] = 1

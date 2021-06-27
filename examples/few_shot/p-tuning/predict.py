@@ -320,29 +320,61 @@ def write_csldcp(task_name, output_file, pred_labels):
             f.write("{" + str_test_example + "}\n")
 
 
-def write_tnews(task_name, output_file, pred_labels):
-    test_ds, train_few_all = load_dataset(
-        "fewclue", name="tnews", splits=("test", "train_few_all"))
+def write_tnews(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
 
-    def label2id(train_few_all):
-        label2id = {}
-        for example in train_few_all:
-            label = example["label_desc"]
-            label_id = example["label"]
-            if label not in label2id:
-                label2id[label] = str(label_id)
-        return label2id
+    if is_test:
+        test_ds, train_few_all = load_dataset(
+            "fewclue", name="tnews", splits=("test", "train_few_all"))
 
-    label2id_dict = label2id(train_few_all)
+        def label2id(train_few_all):
+            label2id = {}
+            for example in train_few_all:
+                label = example["label_desc"]
+                label_id = example["label"]
+                if label not in label2id:
+                    label2id[label] = str(label_id)
+            return label2id
 
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = label2id_dict[pred_labels[idx]]
+        label2id_dict = label2id(train_few_all)
 
-            str_test_example = json.dumps(test_example) + "\n"
-            f.write(str_test_example)
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = label2id_dict[pred_labels[idx]]
+
+                str_test_example = json.dumps(test_example) + "\n"
+                f.write(str_test_example)
+    else:
+        test_ds, train_few_all = load_dataset(
+            "fewclue", name="tnews", splits=("unlabeled", "train_few_all"))
+
+        def label2id(train_few_all):
+            label2id = {}
+            for example in train_few_all:
+                label = example["label_desc"]
+                label_id = example["label"]
+                if label not in label2id:
+                    label2id[label] = str(label_id)
+            return label2id
+
+        label2id_dict = label2id(train_few_all)
+
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = label2id_dict[pred_labels[idx]]
+                test_example["label_desc"] = pred_labels[idx]
+                test_example['sentence'] = example['sentence']
+                
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+        return None
 
 
 def write_cluewsc(task_name, output_file, pred_labels):
@@ -373,12 +405,10 @@ def write_eprstmt(task_name, output_file, pred_labels, probs, is_test=True, min_
         return None
     else:
         #predict for unlabeled.json
-        #test_ds = load_dataset("fewclue", name="eprstmt", splits=("unlabeled"))
-        test_ds = load_dataset("fewclue", name="eprstmt", data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
+        test_ds = load_dataset("fewclue", name="eprstmt", splits=("unlabeled"))
+        #test_ds = load_dataset("fewclue", name="eprstmt", data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
 
-        #unlabeled_examples = []
         all_examples = []
-        # print("probs:{}".format(probs))
         with open(output_file, 'w', encoding='utf-8') as f:
             for idx, example in enumerate(test_ds):
                 test_example = {}
