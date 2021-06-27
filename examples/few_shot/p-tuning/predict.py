@@ -20,6 +20,8 @@ import time
 import json
 from functools import partial
 
+from tqdm import tqdm
+
 import numpy as np
 import paddle
 import paddle.nn.functional as F
@@ -47,6 +49,11 @@ def parse_args():
     parser.add_argument(
         "--batch_size",
         default=32,
+        type=int,
+        help="Batch size per GPU/CPU for training.")
+    parser.add_argument(
+        "--extend_batch_size",
+        default=16,
         type=int,
         help="Batch size per GPU/CPU for training.")
     parser.add_argument(
@@ -108,7 +115,7 @@ def do_predict(model, tokenizer, data_loader, label_normalize_dict):
 
     y_pred_labels = []
 
-    for batch in data_loader:
+    for batch in tqdm(data_loader):
         src_ids, token_type_ids, masked_positions = batch
 
         max_len = src_ids.shape[1]
@@ -152,6 +159,7 @@ def do_predict(model, tokenizer, data_loader, label_normalize_dict):
         for index in y_pred_index:
             y_pred_labels.append(origin_labels[index])
 
+    model.train()
     return y_pred_labels
 
 
@@ -246,6 +254,17 @@ predict_file = {
     "tnews": "tnewsf_predict.json"
 }
 
+unlabeled_file = {
+    "bustm": "unlabeled.json",
+    "chid": "unlabeled.json",
+    "cluewsc": "unlabeled.json",
+    "csldcp": "unlabeled.json",
+    "csl": "unlabeled.json",
+    "eprstmt": "unlabeled.json",
+    "iflytek": "unlabeled.json",
+    "ocnli": "unlabeled.json",
+    "tnews": "unlabeled.json"
+}
 
 def write_iflytek(task_name, output_file, pred_labels):
     test_ds, train_few_all = load_dataset(
@@ -335,17 +354,38 @@ def write_cluewsc(task_name, output_file, pred_labels):
             f.write("{" + str_test_example + "}\n")
 
 
-def write_eprstmt(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name="eprstmt", splits=("test"))
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = pred_labels[idx]
+def write_eprstmt(task_name, output_file, pred_labels, is_test=True):
+    # predict for test.json
+    if is_test:
+        test_ds = load_dataset("fewclue", name="eprstmt", splits=("test"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
 
-            str_test_example = json.dumps(test_example)
-            f.write(str_test_example + "\n")
+                str_test_example = json.dumps(test_example)
+                f.write(str_test_example + "\n")
+        return None
+    else:
+        #predict for unlabeled.json
+        test_ds = load_dataset("fewclue", name="eprstmt", splits=("unlabeled"))
+        #test_ds = load_dataset("fewclue", name="eprstmt", data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
 
+        #unlabeled_examples = []
+        all_examples = []
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example = {}
+                test_example["id"] = example["id"]
+                test_example["sentence"] = example["sentence"]
+                test_example["label"] = pred_labels[idx]
+
+                #str_test_example = json.dumps(test_example)
+                str_test_example = str(test_example)
+                f.write(str_test_example + "\n")
+                all_examples.append(test_example)
+        return all_examples
 
 def write_ocnli(task_name, output_file, pred_labels):
     test_ds = load_dataset("fewclue", name="ocnli", splits=("test"))

@@ -267,16 +267,22 @@ def transform_tnews(example, label_normalize_dict=None, is_test=False):
         return example
 
 
-def transform_eprstmt(example, label_normalize_dict=None, is_test=False):
+def transform_eprstmt(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 1
-        example['sentence1'] = u'综合来讲很[UNK]！，' + example["sentence"]
+        if pattern_id == 0:
+            example['sentence1'] = u'综合来讲很[UNK]！，' + example["sentence"]
+        elif pattern_id == 1:
+            example['sentence1'] = u'很[UNK]满意。' + example["sentence"]
         return example
     else:
         origin_label = example["label"]
         # Normalize some of the labels, eg. English -> Chinese
         example['text_label'] = label_normalize_dict[origin_label]
-        example['sentence1'] = u'综合来讲很[UNK]！，' + example["sentence"]
+        if pattern_id == 0:
+            example['sentence1'] = u'综合来讲很[UNK]！，' + example["sentence"]
+        elif pattern_id == 1:
+            example['sentence1'] = u'很[UNK]满意。' + example["sentence"]
 
         del example["sentence"]
         del example["label"]

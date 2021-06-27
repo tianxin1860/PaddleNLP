@@ -84,7 +84,8 @@ def do_evaluate(model, tokenizer, data_loader, label_normalize_dict):
 
         total_num += len(y_true_index)
         correct_num += (y_true_index == y_pred_index).sum()
-
+    
+    model.train()
     return 100 * correct_num / total_num, total_num
 
 

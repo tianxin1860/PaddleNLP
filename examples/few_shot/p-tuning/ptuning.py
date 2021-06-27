@@ -20,6 +20,7 @@ import time
 import json
 from functools import partial
 
+from tqdm import tqdm
 import numpy as np
 import paddle
 import paddle.nn.functional as F
@@ -33,7 +34,7 @@ from model import ErnieForPretraining, ErnieMLMCriterion
 from data import create_dataloader, transform_fn_dict
 from data import convert_example, convert_chid_example
 from evaluate import do_evaluate, do_evaluate_chid
-from predict import write_fn, do_predict, do_predict_chid, predict_file
+from predict import write_fn, do_predict, do_predict_chid, predict_file, unlabeled_file
 
 
 def parse_args():
@@ -62,6 +63,16 @@ def parse_args():
         default=32,
         type=int,
         help="Batch size per GPU/CPU for training.")
+    parser.add_argument(
+        "--predict_batch_size",
+        default=16,
+        type=int,
+        help="Batch size per GPU/CPU for training.")
+    parser.add_argument(
+        "--pattern_id",
+        default=0,
+        type=int,
+        help="which pattern to be used")
     parser.add_argument(
         "--learning_rate",
         default=1e-5,
@@ -116,6 +127,11 @@ def parse_args():
         type=int,
         default=10000000000,
         help="Inteval steps to save checkpoint")
+    parser.add_argument(
+        '--eval_steps',
+        type=int,
+        default=50,
+        help="Inteval steps to save checkpoint")
 
     args = parser.parse_args()
     return args
@@ -128,7 +144,9 @@ def set_seed(seed):
     paddle.seed(seed)
 
 
-def do_train(args):
+def do_train(args, iter_num=0, unlabeled_examples=None, history_max_acc=0.0, best_checkpoint=None):
+    print("[iter_num {}] start training *******************************************".format(iter_num))
+
     paddle.set_device(args.device)
     rank = paddle.distributed.get_rank()
     if paddle.distributed.get_world_size() > 1:
@@ -147,10 +165,26 @@ def do_train(args):
     evaluate_fn = do_evaluate if args.task_name != "chid" else do_evaluate_chid
     predict_fn = do_predict if args.task_name != "chid" else do_predict_chid
 
-    train_ds, dev_ds, test_ds = load_dataset(
+    # train_ds, dev_ds, test_ds, unlabeled_ds = load_dataset(
+    #     "fewclue",
+    #     name=args.task_name,
+    #     splits=("train_" + args.index, "dev_" + args.index, "test", "unlabeled"))
+
+    train_ds, dev_ds, test_ds, unlabeled_ds = load_dataset(
         "fewclue",
         name=args.task_name,
-        splits=("train_" + args.index, "dev_" + args.index, "test"))
+        splits=("train_" + args.index, "test_public", "test", "unlabeled"))
+
+    # train_ds, dev_ds, test_ds = load_dataset(
+    #     "fewclue",
+    #     name=args.task_name,
+    #     splits=("train_" + args.index, "dev_" + args.index, "test"))
+    # unlabeled_ds = load_dataset("fewclue", name=args.task_name, data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
+
+    if unlabeled_examples:
+        train_ds.new_data += unlabeled_examples
+        print("using extended train_ds:{}".format(len(train_ds)))
+        # splits=("train_" + args.index, "test_public", "test", "unlabeled"))
         #splits=("train_" + args.index, "test_public", "test"))
 
     # Task related transform operations, eg: numbert label -> text_label, english -> chinese
@@ -170,6 +204,7 @@ def do_train(args):
     train_ds = train_ds.map(transform_fn, lazy=False)
     dev_ds = dev_ds.map(transform_fn, lazy=False)
     test_ds = test_ds.map(predict_transform_fn, lazy=False)
+    unlabeled_ds = unlabeled_ds.map(predict_transform_fn, lazy=False)
 
     #model = ErnieForPretraining.from_pretrained('ernie-1.0')
     #tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
@@ -235,21 +270,33 @@ def do_train(args):
     dev_data_loader = create_dataloader(
         dev_ds,
         mode='eval',
-        batch_size=args.batch_size,
+        batch_size=args.predict_batch_size,
         batchify_fn=batchify_fn,
         trans_fn=trans_func)
 
     test_data_loader = create_dataloader(
         test_ds,
         mode='eval',
-        batch_size=args.batch_size,
+        batch_size=args.predict_batch_size,
         batchify_fn=predict_batchify_fn,
         trans_fn=trans_func_test)
 
-    if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
-        state_dict = paddle.load(args.init_from_ckpt)
+    unlabeled_data_loader = create_dataloader(
+        unlabeled_ds,
+        mode='eval',
+        batch_size=args.predict_batch_size,
+        batchify_fn=predict_batchify_fn,
+        trans_fn=trans_func_test)
+
+    # if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
+    #     state_dict = paddle.load(args.init_from_ckpt)
+    #     model.set_dict(state_dict)
+    #     print("warmup from:{}".format(args.init_from_ckpt))
+
+    if os.path.exists(best_checkpoint) and os.path.isfile(best_checkpoint):
+        state_dict = paddle.load(best_checkpoint)
         model.set_dict(state_dict)
-        print("warmup from:{}".format(args.init_from_ckpt))
+        print("model paramters warmup from:{}".format(best_checkpoint))
 
     mlm_loss_fn = ErnieMLMCriterion()
 
@@ -264,18 +311,27 @@ def do_train(args):
         p.name for n, p in model.named_parameters()
         if not any(nd in n for nd in ["bias", "norm"])
     ]
+
+    clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+
     optimizer = paddle.optimizer.AdamW(
         learning_rate=lr_scheduler,
         parameters=model.parameters(),
         weight_decay=args.weight_decay,
-        apply_decay_param_fun=lambda x: x in decay_params)
+        apply_decay_param_fun=lambda x: x in decay_params,
+        grad_clip=clip)
 
     global_step = 0
     max_dev_acc = 0.0
+    best_epoch = 0
     tic_train = time.time()
+
+    if iter_num >= 1:
+        args.epochs = 2
+
     for epoch in range(1, args.epochs + 1):
         model.train()
-        for step, batch in enumerate(train_data_loader, start=1):
+        for step, batch in tqdm(enumerate(train_data_loader, start=1)):
 
             src_ids = batch[0]
             token_type_ids = batch[1]
@@ -307,6 +363,40 @@ def do_train(args):
                     % (global_step, epoch, step, loss,
                        10 / (time.time() - tic_train)))
                 tic_train = time.time()
+
+            if global_step % args.eval_steps == 0 and rank == 0 and iter_num >= 1:
+                dev_accuracy, total_num = evaluate_fn(model, tokenizer, dev_data_loader,
+                                        label_norm_dict)
+                print("epoch:{}, global_step:{}, dev_accuracy:{:.3f}, total_num:{}, iter_num:{}".format(
+                    epoch, global_step, dev_accuracy, total_num, iter_num))
+
+                if dev_accuracy > max_dev_acc:
+                    y_pred_labels = predict_fn(model, tokenizer, test_data_loader,
+                                            label_norm_dict)
+
+                    if not os.path.exists(args.output_dir):
+                        os.makedirs(args.output_dir)
+                    output_file = os.path.join(args.output_dir,
+                                            "index" + args.index + "_" + str(epoch) +
+                                            "epoch_" + str(iter_num) + "iter_" + str(global_step) + "step_" + predict_file[args.task_name])
+                                            
+                    print("[save predict_result]{}".format(output_file))
+
+                    _ = write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
+
+                    max_dev_acc = dev_accuracy
+                    best_epoch = epoch
+                    best_step = global_step
+
+                    if rank == 0:
+                        save_dir = os.path.join(args.save_dir, "model_iter{}_epoch{}_step{}".format(iter_num, epoch, global_step))
+                        if not os.path.exists(save_dir):
+                            os.makedirs(save_dir)
+                        save_param_path = os.path.join(save_dir, 'model_state.pdparams')
+                        print("[save checkpoint]{}".format(save_param_path))
+                        paddle.save(model.state_dict(), save_param_path)
+                        tokenizer.save_pretrained(save_dir)
+    
             loss.backward()
             optimizer.step()
             lr_scheduler.step()
@@ -314,8 +404,8 @@ def do_train(args):
 
         dev_accuracy, total_num = evaluate_fn(model, tokenizer, dev_data_loader,
                                               label_norm_dict)
-        print("epoch:{}, dev_accuracy:{:.3f}, total_num:{}".format(
-            epoch, dev_accuracy, total_num))
+        print("epoch:{}, global_step:{}, dev_accuracy:{:.3f}, total_num:{}, iter_num:{}".format(
+            epoch, global_step, dev_accuracy, total_num, iter_num))
 
         if dev_accuracy > max_dev_acc:
             y_pred_labels = predict_fn(model, tokenizer, test_data_loader,
@@ -325,23 +415,65 @@ def do_train(args):
                 os.makedirs(args.output_dir)
             output_file = os.path.join(args.output_dir,
                                     "index" + args.index + "_" + str(epoch) +
-                                    "epoch_" + predict_file[args.task_name])
+                                    "epoch_" + str(iter_num) + "iter_" + str(global_step) + "step_" + predict_file[args.task_name])
                                     
             print("[save predict_result]{}".format(output_file))
 
-            write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
+            _ = write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
 
             max_dev_acc = dev_accuracy
+            best_epoch = epoch
+            best_step = global_step
 
-        # if rank == 0:
-        #     save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
-        #     if not os.path.exists(save_dir):
-        #         os.makedirs(save_dir)
-        #     save_param_path = os.path.join(save_dir, 'model_state.pdparams')
-        #     paddle.save(model.state_dict(), save_param_path)
-        #     tokenizer.save_pretrained(save_dir)
+            if rank == 0:
+                save_dir = os.path.join(args.save_dir, "model_iter{}_epoch{}_step{}".format(iter_num, epoch, global_step))
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir)
+                save_param_path = os.path.join(save_dir, 'model_state.pdparams')
+                print("[save checkpoint]{}".format(save_param_path))
+                paddle.save(model.state_dict(), save_param_path)
+                tokenizer.save_pretrained(save_dir)
+        
+    if max_dev_acc > history_max_acc:
+        # load best_epoch checkpoint
+        best_checkpoint = os.path.join(args.save_dir, "model_iter{}_epoch{}_step{}".format(iter_num, best_epoch, best_step), 'model_state.pdparams')
+        assert os.path.isfile(best_checkpoint), "best_checkpoint {} not exist".format(best_checkpoint)
+        print("start load parameters from best_checkpoint:{}".format(best_checkpoint))
+        state_dict = paddle.load(best_checkpoint)
+        print("start set parameters to model")
+        model.set_dict(state_dict)
+
+        # predict unlabeled_data
+        print("predicting unlabel_data......")
+        y_pred_labels = predict_fn(model, tokenizer, unlabeled_data_loader, label_norm_dict)
+        output_file = os.path.join(args.output_dir,
+                        "index" + args.index + "_" + str(best_epoch) +
+                        "epoch_" + str(iter_num) + "iter_" + str(global_step) + "step_" + unlabeled_file[args.task_name])
+        print("[save unlabeled_result]{}".format(output_file))
+        unlabeled_examples = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, is_test=False)
+
+        return {'unlabeled_examples': unlabeled_examples,
+                'history_max_acc': max_dev_acc, 
+                'best_checkpoint': best_checkpoint}
+    else:
+        # Stop training
+        print("Stop training at iter_num:{} ********************************".format(iter_num))
+        return None
 
 
 if __name__ == "__main__":
     args = parse_args()
-    do_train(args)
+
+    kwargs = {
+        'unlabeled_examples': None,
+        'history_max_acc': 0.0,
+        'best_checkpoint': ""
+    }
+
+    iter_num = 0
+    while True:
+        if kwargs:
+            kwargs = do_train(args, iter_num, **kwargs)
+            iter_num += 1
+        else:
+            break
