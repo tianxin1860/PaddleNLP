@@ -144,6 +144,11 @@ def parse_args():
         type=float,
         default=1.0,
         help="Inteval steps to save checkpoint")
+    parser.add_argument(
+        '--min_prob',
+        type=float,
+        default=0.7,
+        help="Inteval steps to save checkpoint")
 
     args = parser.parse_args()
     return args
@@ -156,7 +161,7 @@ def set_seed(seed):
     paddle.seed(seed)
 
 
-def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_checkpoint=None, last_train=False):
+def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_checkpoint=None, last_train=False, pretrained_model=None):
     print("[start training] iter_num:{}, unlabeled_file:{}, history_max_acc:{}, best_checkpoint:{}, last_train:{}".format(iter_num, unlabeled_file, history_max_acc, best_checkpoint, last_train))
 
     paddle.set_device(args.device)
@@ -182,17 +187,17 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
     #     name=args.task_name,
     #     splits=("train_" + args.index, "dev_" + args.index, "test", "unlabeled"))
 
-    train_ds, dev_ds, test_ds, unlabeled_ds = load_dataset(
-        "fewclue",
-        name=args.task_name,
-        splits=("train_" + args.index, "test_public", "test", "unlabeled"))
-
-    # train_ds, dev_ds, test_ds = load_dataset(
+    # train_ds, dev_ds, test_ds, unlabeled_ds = load_dataset(
     #     "fewclue",
     #     name=args.task_name,
-    #     splits=("train_" + args.index, "dev_" + args.index, "test"))
+    #     splits=("train_" + args.index, "test_public", "test", "unlabeled"))
 
-    # unlabeled_ds = load_dataset("fewclue", name=args.task_name, data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
+    train_ds, dev_ds, test_ds = load_dataset(
+        "fewclue",
+        name=args.task_name,
+        splits=("train_" + args.index, "dev_" + args.index, "test"))
+
+    unlabeled_ds = load_dataset("fewclue", name=args.task_name, data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
 
     if unlabeled_file:
         print("load_unlabeled_file:{}".format(unlabeled_file))
@@ -226,10 +231,14 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
     #model = ErnieForPretraining.from_pretrained('ernie-1.0')
     #tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
 
-    model = ppnlp.transformers.BertForPretraining.from_pretrained(
-        args.language_model)
+    if not pretrained_model:
+        model = ppnlp.transformers.BertForPretraining.from_pretrained(
+            args.language_model)
+    else:
+        model = pretrained_model
+
     tokenizer = ppnlp.transformers.BertTokenizer.from_pretrained(
-        args.language_model)
+            args.language_model)
 
     if args.task_name != "chid":
         # [src_ids, token_type_ids, masked_positions, masked_lm_labels]
@@ -305,10 +314,10 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
         batchify_fn=predict_batchify_fn,
         trans_fn=trans_func_test)
 
-    # if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
-    #     state_dict = paddle.load(args.init_from_ckpt)
-    #     model.set_dict(state_dict)
-    #     print("warmup from:{}".format(args.init_from_ckpt))
+    if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
+        state_dict = paddle.load(args.init_from_ckpt)
+        model.set_dict(state_dict)
+        print("warmup from:{}".format(args.init_from_ckpt))
 
     if os.path.exists(best_checkpoint) and os.path.isfile(best_checkpoint):
         state_dict = paddle.load(best_checkpoint)
@@ -406,7 +415,7 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
                 # when new_max_acc, predict test.json and unlabeled.json
                 if dev_accuracy > history_max_acc:
                     print("[meet better performance] dev_accuracy:{}\thistory_max_acc:{}".format(dev_accuracy, history_max_acc))
-                    y_pred_labels = predict_fn(model, tokenizer, test_data_loader,
+                    y_pred_labels, probs = predict_fn(model, tokenizer, test_data_loader,
                                             label_norm_dict)
 
                     if not os.path.exists(args.output_dir):
@@ -417,7 +426,7 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
                                             
                     print("[save predict_result]{}".format(output_file))
 
-                    _ = write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
+                    _ = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, probs)
 
                     max_dev_acc = dev_accuracy
                     best_epoch = epoch
@@ -443,17 +452,18 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
 
                     # predict unlabeled_data
                     print("predicting unlabel_data......")
-                    y_pred_labels = predict_fn(model, tokenizer, unlabeled_data_loader, label_norm_dict)
+                    y_pred_labels, probs = predict_fn(model, tokenizer, unlabeled_data_loader, label_norm_dict)
                     output_file = os.path.join(args.output_dir,
                                     "index" + args.index + "_" + str(best_epoch) +
                                     "epoch_" + str(iter_num) + "iter_" + str(best_step) + "step_" + unlabeled_file_dict[args.task_name])
                     print("[save unlabeled_result]{}".format(output_file))
-                    unlabeled_examples = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, is_test=False)
+                    unlabeled_examples = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, probs, is_test=False, min_prob=args.min_prob)
 
                     return {'unlabeled_file': output_file,
                             'history_max_acc': max_dev_acc, 
                             'best_checkpoint': best_checkpoint,
-                            'last_train': False}
+                            'last_train': False,
+                            'pretrained_model': model}
                 else:
                     # if continuously 50 steps not geneate better performance, then end self-traning
                     not_better_num_step += 1
@@ -463,14 +473,15 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
                     if not_better_num_step >= args.max_not_better_num:
                         # Stop training
                         print("Self-training stop at iter_num:{} ********************************".format(iter_num))
+               
                         return {'unlabeled_file': None,
                             'history_max_acc': history_max_acc, 
                             'best_checkpoint': best_checkpoint,
-                            'last_train': True}
+                            'last_train': True,
+                            'pretrained_model': model}
                     else:
                         pass
 
-    
             loss.backward()
             optimizer.step()
             lr_scheduler.step()
@@ -483,7 +494,7 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
                 epoch, global_step, dev_accuracy, total_num, iter_num, last_train))
 
             if dev_accuracy > max_dev_acc:
-                y_pred_labels = predict_fn(model, tokenizer, test_data_loader,
+                y_pred_labels, probs = predict_fn(model, tokenizer, test_data_loader,
                                         label_norm_dict)
 
                 if not os.path.exists(args.output_dir):
@@ -493,7 +504,7 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
                                         "epoch_" + str(iter_num) + "iter_" + str(global_step) + "step_" + predict_file[args.task_name])
                                         
                 print("[save predict_result]{}".format(output_file))
-                _ = write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
+                _ = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, probs)
 
                 max_dev_acc = dev_accuracy
                 best_epoch = epoch
@@ -519,12 +530,12 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
 
         # predict unlabeled_data
         print("predicting unlabel_data......")
-        y_pred_labels = predict_fn(model, tokenizer, unlabeled_data_loader, label_norm_dict)
+        y_pred_labels, probs = predict_fn(model, tokenizer, unlabeled_data_loader, label_norm_dict)
         output_file = os.path.join(args.output_dir,
                         "index" + args.index + "_" + str(best_epoch) +
                         "epoch_" + str(iter_num) + "iter_" + str(best_step) + "step_" + unlabeled_file_dict[args.task_name])
         print("[save unlabeled_result]{}".format(output_file))
-        unlabeled_examples = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, is_test=False)
+        unlabeled_examples = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, probs, is_test=False, min_prob=args.min_prob)
 
         if last_train:
             print("Last train use labeled data finished:{} ************************".format(iter_num))
@@ -533,7 +544,8 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
             return {'unlabeled_file': output_file,
                     'history_max_acc': max_dev_acc, 
                     'best_checkpoint': best_checkpoint,
-                    'last_train': False}
+                    'last_train': False,
+                    'pretrained_model': model }
     else:
         # Stop training
         print("Stop training at iter_num:{} ********************************".format(iter_num))
@@ -548,7 +560,8 @@ if __name__ == "__main__":
         'unlabeled_file': None,
         'history_max_acc': 0.0,
         'best_checkpoint': "",
-        'last_train': False
+        'last_train': False,
+        'pretrained_model': None,
     }
 
     iter_num = 0

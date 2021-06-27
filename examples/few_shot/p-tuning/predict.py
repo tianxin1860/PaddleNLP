@@ -114,6 +114,7 @@ def do_predict(model, tokenizer, data_loader, label_normalize_dict):
     label_length = len(normed_labels[0])
 
     y_pred_labels = []
+    y_pred_probs = []
 
     for batch in tqdm(data_loader):
         src_ids, token_type_ids, masked_positions = batch
@@ -153,14 +154,17 @@ def do_predict(model, tokenizer, data_loader, label_normalize_dict):
         for index in range(label_length):
             y_pred *= prediction_probs[:, index, label_ids[:, index]]
 
+        y_pred_probs.append(y_pred)
         # Get max probs label's index
         y_pred_index = np.argmax(y_pred, axis=-1)
 
         for index in y_pred_index:
             y_pred_labels.append(origin_labels[index])
 
+    y_pred_probs = np.concatenate(y_pred_probs, axis=0)
     model.train()
-    return y_pred_labels
+    # y_pred: probs
+    return y_pred_labels, y_pred_probs
 
 
 @paddle.no_grad()
@@ -354,7 +358,7 @@ def write_cluewsc(task_name, output_file, pred_labels):
             f.write("{" + str_test_example + "}\n")
 
 
-def write_eprstmt(task_name, output_file, pred_labels, is_test=True):
+def write_eprstmt(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
     # predict for test.json
     if is_test:
         test_ds = load_dataset("fewclue", name="eprstmt", splits=("test"))
@@ -369,22 +373,25 @@ def write_eprstmt(task_name, output_file, pred_labels, is_test=True):
         return None
     else:
         #predict for unlabeled.json
-        test_ds = load_dataset("fewclue", name="eprstmt", splits=("unlabeled"))
-        #test_ds = load_dataset("fewclue", name="eprstmt", data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
+        #test_ds = load_dataset("fewclue", name="eprstmt", splits=("unlabeled"))
+        test_ds = load_dataset("fewclue", name="eprstmt", data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
 
         #unlabeled_examples = []
         all_examples = []
+        # print("probs:{}".format(probs))
         with open(output_file, 'w', encoding='utf-8') as f:
             for idx, example in enumerate(test_ds):
                 test_example = {}
                 test_example["id"] = example["id"]
                 test_example["sentence"] = example["sentence"]
                 test_example["label"] = pred_labels[idx]
-
-                #str_test_example = json.dumps(test_example)
-                str_test_example = str(test_example)
-                f.write(str_test_example + "\n")
-                all_examples.append(test_example)
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                    all_examples.append(test_example)
+                else:
+                    continue
         return all_examples
 
 def write_ocnli(task_name, output_file, pred_labels):
