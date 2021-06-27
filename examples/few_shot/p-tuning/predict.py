@@ -295,16 +295,36 @@ def write_iflytek(task_name, output_file, pred_labels):
             f.write(str_test_example)
 
 
-def write_bustm(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name="bustm", splits=("test"))
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = pred_labels[idx]
-            str_test_example = json.dumps(test_example) + "\n"
-            f.write(str_test_example)
+def write_bustm(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
+    if is_test:
+        test_ds = load_dataset("fewclue", name="bustm", splits=("test"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                str_test_example = json.dumps(test_example) + "\n"
+                f.write(str_test_example)
+    else:
+        test_ds = load_dataset("fewclue", name="bustm", splits=("unlabeled"))
+        #data_file = "/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_" + task_name + "/unlabeled_demo.json"
+        #test_ds = load_dataset("fewclue", name="bustm", data_files=data_file)
 
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                test_example["sentence1"] = example["sentence1"]
+                test_example["sentence2"] = example["sentence2"]
+
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+        return None
 
 def write_csldcp(task_name, output_file, pred_labels):
     test_ds = load_dataset("fewclue", name="csldcp", splits=("test"))

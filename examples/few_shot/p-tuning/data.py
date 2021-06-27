@@ -361,13 +361,22 @@ def transform_bustm(example, label_normalize_dict=None, is_test=False, pattern_i
     if is_test:
         # Label: ["很"， "不"]
         example["label_length"] = 1
-        example["sentence1"] = u'[UNK]' + example["sentence1"]
+        if pattern_id == 0:
+            example["sentence1"] = u'[UNK]' + example["sentence1"]
+        elif pattern_id == 1:
+            example["sentence1"] = example["sentence1"] + '和' + example["sentence2"] + '意思[UNK]同'
+            del example["sentence2"]
         return example
     else:
         origin_label = str(example["label"])
 
         # Normalize some of the labels, eg. English -> Chinese
-        example["sentence1"] = u'[UNK]' + example["sentence1"]
+        if pattern_id == 0:
+            example["sentence1"] = u'[UNK]' + example["sentence1"]
+        elif pattern_id == 1:
+            example["sentence1"] = example["sentence1"] + '和' + example["sentence2"] + '意思[UNK]同'
+            del example["sentence2"]
+            
         example['text_label'] = label_normalize_dict[origin_label]
 
         del example["label"]

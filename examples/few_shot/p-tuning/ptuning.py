@@ -198,7 +198,9 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
     #     name=args.task_name,
     #     splits=("train_" + args.index, "dev_" + args.index, "test"))
 
-    # unlabeled_ds = load_dataset("fewclue", name=args.task_name, data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
+    #unlabeled_ds = load_dataset("fewclue", name=args.task_name, data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
+    # data_file = "/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_" + args.task_name + "/unlabeled_demo.json"
+    # unlabeled_ds = load_dataset("fewclue", name=args.task_name, data_files=data_file)
 
     if unlabeled_file:
         print("load_unlabeled_file:{}".format(unlabeled_file))
@@ -542,6 +544,7 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
             print("Last train use labeled data finished:{} ************************".format(iter_num))
             return None
         else:
+            print("return from first_train")
             return {'unlabeled_file': output_file,
                 'history_max_acc': max_dev_acc, 
                 'best_checkpoint': best_checkpoint,
@@ -573,9 +576,12 @@ if __name__ == "__main__":
                 all_unlabdled_files.append(kwargs['unlabeled_file'])
                 print("all_unlabdled_files:{}".format(all_unlabdled_files))
             else:
-                # last_train = True
-                kwargs = do_train(args, iter_num, **kwargs)
-                break
+                if kwargs['last_train']:
+                    print("return unlabeled_file None")
+                    kwargs = do_train(args, iter_num, **kwargs)
+                    break
+                else:
+                    pass
 
             if len(all_unlabdled_files) > 1:
                 # ensemble unlabeled.json
