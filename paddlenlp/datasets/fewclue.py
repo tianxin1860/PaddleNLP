@@ -687,7 +687,15 @@ class FewCLUE(DatasetBuilder):
     def _read(self, filename, split):
         with open(filename, 'r', encoding='utf-8') as f:
             for line in f:
-                yield json.loads(line.rstrip())
+                if "unlabeled" in filename:
+                    line = line.rstrip().replace('\'', '\"')
+                else:
+                    line = line.rstrip()
+                try:
+                    example = json.loads(line)
+                    yield example
+                except:
+                    continue
 
     def get_labels(self):
         """

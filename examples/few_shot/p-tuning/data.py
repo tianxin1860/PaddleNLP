@@ -268,6 +268,7 @@ def transform_tnews(example, label_normalize_dict=None, is_test=False):
 
 
 def transform_eprstmt(example, label_normalize_dict=None, is_test=False, pattern_id=0):
+    # print("example:{}".format(example))
     if is_test:
         example["label_length"] = 1
         if pattern_id == 0:

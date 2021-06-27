@@ -254,7 +254,7 @@ predict_file = {
     "tnews": "tnewsf_predict.json"
 }
 
-unlabeled_file = {
+unlabeled_file_dict = {
     "bustm": "unlabeled.json",
     "chid": "unlabeled.json",
     "cluewsc": "unlabeled.json",
