@@ -313,11 +313,11 @@ def transform_ocnli(example, label_normalize_dict=None, is_test=False):
         return example
 
 
-def transform_csl(example, label_normalize_dict=None, is_test=False):
+def transform_csl(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 1
-        example["sentence1"] = u'本文的内容[UNK]是:' + "，".join(example[
-            "keyword"]) + example["abst"]
+        if pattern_id == 0:
+            example["sentence1"] = u'本文的内容[UNK]是:' + "，".join(example["keyword"]) + example["abst"]
 
         del example["abst"]
         del example["keyword"]
@@ -328,8 +328,8 @@ def transform_csl(example, label_normalize_dict=None, is_test=False):
         # Normalize some of the labels, eg. English -> Chinese
         example['text_label'] = label_normalize_dict[origin_label]
 
-        example["sentence1"] =  u'本文的内容[UNK]是:'  + "，".join(example[
-            "keyword"]) + example["abst"]
+        if pattern_id == 0:
+            example["sentence1"] =  u'本文的内容[UNK]是:'  + "，".join(example["keyword"]) + example["abst"]
 
         del example["label"]
         del example["abst"]

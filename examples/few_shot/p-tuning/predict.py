@@ -509,15 +509,34 @@ def write_ocnli(task_name, output_file, pred_labels):
             f.write(str_test_example + "\n")
 
 
-def write_csl(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name="csl", splits=("test"))
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = pred_labels[idx]
-            str_test_example = json.dumps(test_example)
-            f.write(str_test_example + "\n")
+def write_csl(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
+    if is_test:
+        test_ds = load_dataset("fewclue", name="csl", splits=("test"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                str_test_example = json.dumps(test_example)
+                f.write(str_test_example + "\n")
+    else:
+        test_ds = load_dataset("fewclue", name="csl", splits=("unlabeled"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                test_example["abst"] = example["abst"]
+                test_example["keyword"] = example["keyword"]
+
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+                # str_test_example = json.dumps(test_example)
+                # f.write(str_test_example + "\n")
+        return None
 
 
 def write_chid(task_name, output_file, pred_labels):

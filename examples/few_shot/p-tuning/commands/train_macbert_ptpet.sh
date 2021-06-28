@@ -124,6 +124,17 @@ if [[ ${task_name} == "csldcp" ]]; then
     max_seq_len=500
 fi
 
+if [[ ${task_name} == "csl" ]]; then
+    pattern_ids=(0)
+    batch_size=(8 16)
+    learning_rate=(2E-5 5E-5)
+    p_embedding_num=(1)
+    predict_batch_size=8
+    min_pred_prob=0.92
+    eval_steps=40
+    max_seq_len=500
+fi
+
 # for debug
 #batch_size=(4)
 #learning_rate=(1E-4)
