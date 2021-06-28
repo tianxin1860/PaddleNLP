@@ -338,10 +338,11 @@ def transform_csl(example, label_normalize_dict=None, is_test=False):
         return example
 
 
-def transform_csldcp(example, label_normalize_dict=None, is_test=False):
+def transform_csldcp(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 2
-        example["sentence1"] = u'这篇关于[UNK]的文章讲了' + example["content"]
+        if pattern_id == 0:
+            example["sentence1"] = u'这篇关于[UNK]的文章讲了' + example["content"]
         del example["content"]
         return example
     else:
@@ -349,7 +350,8 @@ def transform_csldcp(example, label_normalize_dict=None, is_test=False):
         # Normalize some of the labels, eg. English -> Chinese
         normalized_label = label_normalize_dict[origin_label]
         example['text_label'] = normalized_label
-        example["sentence1"] = u'这篇关于[UNK]的文章讲了' + example["content"]
+        if pattern_id == 0:
+            example["sentence1"] = u'这篇关于[UNK]的文章讲了' + example["content"]
 
         del example["label"]
         del example["content"]

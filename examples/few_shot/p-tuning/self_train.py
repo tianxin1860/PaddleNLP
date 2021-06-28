@@ -69,7 +69,10 @@ ensemble_dict = {
     'eprstmt': ensemble_eprstmt,
     'tnews': ensemble_eprstmt,
     'bustm': ensemble_eprstmt,
-    'iflytek': ensemble_eprstmt
+    'iflytek': ensemble_eprstmt,
+    'csldcp': ensemble_eprstmt,
+    'csl': ensemble_eprstmt,
+    'chid': ensemble_eprstmt
 }
 
 if __name__ == "__main__":
