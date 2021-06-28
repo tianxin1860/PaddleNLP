@@ -33,6 +33,7 @@
 
 #export pretrained_model="ernie1p0"
 #export pretrained_model="macbert-base-chinese"
+export name="ptpet"
 export pretrained_model="macbert-large-chinese"
 task_name=$1
 gpus=$2
@@ -48,6 +49,6 @@ for index in ${indexs[@]}; do
 	if [[ ${pretrained_model} == "ernie1p0" ]]; then
 		bash commands/train.sh ${task_name} ${gpus} ${index} > gpu${gpus}_train_${pretrained_model}_${task_name}_index${index}.log 2>&1
 	else
-		bash commands/train_macbert.sh ${task_name} ${gpus} ${index} > get_result_${pretrained_model}_${task_name}_index${index}.log 2>&1
+		bash commands/get_single_result.sh ${task_name} ${gpus} ${index} > get_result_${pretrained_model}_${task_name}_index${index}.log 2>&1
 	fi
 done

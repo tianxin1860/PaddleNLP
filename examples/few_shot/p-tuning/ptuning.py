@@ -544,7 +544,7 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
             print("Last train use labeled data finished:{} ************************".format(iter_num))
             return None
         else:
-            print("return from first_train")
+            # print("return from first_train")
             return {'unlabeled_file': output_file,
                 'history_max_acc': max_dev_acc, 
                 'best_checkpoint': best_checkpoint,

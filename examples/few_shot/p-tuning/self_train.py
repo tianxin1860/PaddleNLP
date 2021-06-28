@@ -67,6 +67,9 @@ def ensemble(all_unlabdled_examples, ensemble_fn, iter_num, confidence=1.0):
 
 ensemble_dict = {
     'eprstmt': ensemble_eprstmt,
+    'tnews': ensemble_eprstmt,
+    'bustm': ensemble_eprstmt,
+    'iflytek': ensemble_eprstmt
 }
 
 if __name__ == "__main__":
