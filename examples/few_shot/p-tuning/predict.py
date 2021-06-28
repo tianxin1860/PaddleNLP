@@ -270,29 +270,60 @@ unlabeled_file_dict = {
     "tnews": "unlabeled.json"
 }
 
-def write_iflytek(task_name, output_file, pred_labels):
-    test_ds, train_few_all = load_dataset(
-        "fewclue", name="iflytek", splits=("test", "train_few_all"))
+def write_iflytek(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
+    if is_test:
+        test_ds, train_few_all = load_dataset(
+            "fewclue", name="iflytek", splits=("test", "train_few_all"))
 
-    def label2id(train_few_all):
-        label2id = {}
-        for example in train_few_all:
-            label = example["label_des"]
-            label_id = example["label"]
-            if label not in label2id:
-                label2id[label] = str(label_id)
-        return label2id
+        def label2id(train_few_all):
+            label2id = {}
+            for example in train_few_all:
+                label = example["label_des"]
+                label_id = example["label"]
+                if label not in label2id:
+                    label2id[label] = str(label_id)
+            return label2id
 
-    label2id_dict = label2id(train_few_all)
+        label2id_dict = label2id(train_few_all)
 
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = label2id_dict[pred_labels[idx]]
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = label2id_dict[pred_labels[idx]]
 
-            str_test_example = json.dumps(test_example) + "\n"
-            f.write(str_test_example)
+                str_test_example = json.dumps(test_example) + "\n"
+                f.write(str_test_example)
+    else:
+        test_ds, train_few_all = load_dataset(
+            "fewclue", name="iflytek", splits=("unlabeled", "train_few_all"))
+
+        def label2id(train_few_all):
+            label2id = {}
+            for example in train_few_all:
+                label = example["label_des"]
+                label_id = example["label"]
+                if label not in label2id:
+                    label2id[label] = str(label_id)
+            return label2id
+
+        label2id_dict = label2id(train_few_all)
+
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = label2id_dict[pred_labels[idx]]
+                test_example["label_des"] = pred_labels[idx]
+                test_example["sentence"] = example["sentence"]
+
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+        return None
 
 
 def write_bustm(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):

@@ -214,13 +214,13 @@ def convert_chid_example(example,
         return src_ids, token_type_ids, mask_positions, mask_lm_labels, candidate_labels_ids
 
 
-def transform_iflytek(example, label_normalize_dict=None, is_test=False):
+def transform_iflytek(example, label_normalize_dict=None, is_test=False, pattern_id=0):
 
     if is_test:
         # When do_test, set label_length field to point
         # where to insert [MASK] id
         example["label_length"] = 2
-        example["sentence1"] = u'做为一款[UNK]应用，' +example["sentence"]
+        example["sentence1"] = u'做为一款[UNK]应用，' + example["sentence"]
         del example["sentence"]
 
         return example
@@ -376,7 +376,7 @@ def transform_bustm(example, label_normalize_dict=None, is_test=False, pattern_i
         elif pattern_id == 1:
             example["sentence1"] = example["sentence1"] + '和' + example["sentence2"] + '意思[UNK]同'
             del example["sentence2"]
-            
+
         example['text_label'] = label_normalize_dict[origin_label]
 
         del example["label"]
