@@ -72,7 +72,9 @@ ensemble_dict = {
     'iflytek': ensemble_eprstmt,
     'csldcp': ensemble_eprstmt,
     'csl': ensemble_eprstmt,
-    'chid': ensemble_eprstmt
+    'chid': ensemble_eprstmt,
+    'ocnli': ensemble_eprstmt,
+    'cluewsc': ensemble_eprstmt
 }
 
 if __name__ == "__main__":

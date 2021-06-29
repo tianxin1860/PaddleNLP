@@ -332,6 +332,7 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
     num_training_steps = len(train_data_loader) * args.epochs
 
     if last_train:
+        args.epoch = 10
         args.learning_rate = args.learning_rate / 2.0
         print("last train learning_rate:{}".format(args.learning_rate))
 
@@ -364,8 +365,8 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
         args.epochs = 1
 
     for epoch in range(1, args.epochs + 1):
-        model.train()
         for step, batch in tqdm(enumerate(train_data_loader, start=1)):
+            model.train()
 
             src_ids = batch[0]
             token_type_ids = batch[1]

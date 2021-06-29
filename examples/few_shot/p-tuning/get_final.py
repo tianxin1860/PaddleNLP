@@ -18,24 +18,30 @@ if __name__=="__main__":
     #test_accs = []
     strategys = []
     epochs = []
+    iters = []
+    steps = []
 
     dev_num = 0
     #test_num = 0
 
     with open(result_file) as f:
         for line in f:
-            strategy_name, epoch, dev_acc, dev_num = line.strip().split("\t")
+            strategy_name, epoch, dev_acc, dev_num, iter_num, global_step = line.strip().split("\t")
 
             strategys.append(strategy_name)
             dev_accs.append(float(dev_acc))
             #test_accs.append(float(test_acc))
             epochs.append(epoch)
+            iters.append(iter_num)
+            steps.append(global_step)
 
     print("dev_accs:{}".format(dev_accs))
     #print("test_accs:{}".format(test_accs))
 
     max_index = np.argmax(dev_accs)
     max_dev_acc = dev_accs[max_index]
+    max_iter = iters[max_index]
+    max_step = steps[max_index]
     #test_acc = test_accs[max_index]
 
     strategy = strategys[max_index]
@@ -44,10 +50,11 @@ if __name__=="__main__":
     index_name = index if index != "few_all" else "all"
 
     if task_name not in ["eprstmt", "csldcp", "bustm"]:
-        best_predict_file = "index" + index + "_" + epoch  + "epoch_" + task_name + "f_predict.json"
+		# /ssd2/tianxin04/global_data/paddlenlp//examples/few_shot/ptpet_macbert-large-chinese//output/bs8_lr2E-5_pnum1_maxlen512_ptid1/tnews/index1_1epoch_0iter_30step_tnewsf_predict.json
+        best_predict_file = "index" + index + "_" + epoch  + "epoch_" + max_iter + "iter_" + max_step + "step_" + task_name + "f_predict.json"
         std_name = task_name + "f_predict_" + index_name + ".json"
     else:
-        best_predict_file = "index" + index + "_" + epoch  + "epoch_" + task_name + "_predict.json"
+        best_predict_file = "index" + index + "_" + epoch  + "epoch_" + max_iter + "iter_" + max_step + "step_" + task_name + "_predict.json"
         std_name = task_name + "_predict_" + index_name + ".json"
 
     predict_file = os.path.join(output_dir, strategy, task_name, best_predict_file)
@@ -56,6 +63,6 @@ if __name__=="__main__":
     submit_file = os.path.join(submit_result_dir, std_name)
     print("std_result_file:{}".format(submit_file))
 
-    print("{}\t{}\t{}\t{}".format(strategy, epoch, max_dev_acc, dev_num))
+    print("{}\t{}\t{}\t{}\t{}\t{}".format(strategy, epoch, max_dev_acc, dev_num, max_iter, max_step))
 
     copyfile(predict_file, submit_file)

@@ -70,12 +70,9 @@ if [[ ${task_name} == "iflytek" ]]; then
 fi
 
 if [[ ${task_name} == "ocnli" ]]; then
-    pattern_ids=(0)
-    batch_size=(8)
-    learning_rate=(2E-5)
-    p_embedding_num=(1)
-    predict_batch_size=8
-    min_pred_prob=0.90
+    batch_size=(8 16 32)
+    p_embedding_num=(1 8)
+    learning_rate=(2E-5 5E-5)
 fi
 
 if [[ ${task_name} == "eprstmt" ]]; then
@@ -97,10 +94,10 @@ if [[ ${task_name} == "tnews" ]]; then
 fi
 
 if [[ ${task_name} == "bustm" ]]; then
-    pattern_ids=(0)
-    batch_size=(8)
-    learning_rate=(2E-5)
-    p_embedding_num=(1)
+    pattern_ids=(1 0)
+    batch_size=(8 16)
+    learning_rate=(2E-5 5E-5)
+    p_embedding_num=(1 8 16)
     predict_batch_size=8
     min_pred_prob=0.90
     eval_steps=10
@@ -118,8 +115,8 @@ fi
 
 if [[ ${task_name} == "csldcp" ]]; then
     pattern_ids=(0)
-    batch_size=(8)
-    learning_rate=(2E-5)
+    batch_size=(8 16)
+    learning_rate=(2E-5 5E-5)
     p_embedding_num=(1)
     predict_batch_size=8
     min_pred_prob=0.92
@@ -130,8 +127,8 @@ fi
 if [[ ${task_name} == "csl" ]]; then
     #pattern_ids=(0)
     pattern_ids=(1)
-    batch_size=(8)
-    learning_rate=(2E-5)
+    batch_size=(8 16)
+    learning_rate=(2E-5 5E-5)
     p_embedding_num=(1)
     predict_batch_size=8
     min_pred_prob=0.92
@@ -141,14 +138,22 @@ fi
 
 if [[ ${task_name} == "chid" ]]; then
     pattern_ids=(0)
-	epoch=10
-    batch_size=(8)
+    batch_size=(8 16)
     learning_rate=(2E-5 5E-5)
     p_embedding_num=(1)
     predict_batch_size=8
     min_pred_prob=0.92
     eval_steps=40
     max_seq_len=500
+fi
+
+if [[ ${task_name} == "ocnli" ]]; then
+    pattern_ids=(0)
+    batch_size=(8)
+    learning_rate=(2E-5)
+    p_embedding_num=(1)
+    predict_batch_size=8
+    min_pred_prob=0.90
 fi
 
 # for debug
@@ -236,7 +241,7 @@ function get_max_result() {
 		log_dir="${local_log_path}/log/${strategy}/${task_name}"
 		log_file="${log_dir}/index${index}_log"
 
-		grep "dev_accuracy" ${log_file} > ${output_dir}/index${index}_dev_acc
+		grep "dev_accuracy" ${log_file} | grep "total_num" > ${output_dir}/index${index}_dev_acc
 		# only used dev_set to select model
 		# grep "test_accuracy" ${log_file} > ${output_dir}/test_acc
 		cat ${output_dir}/index${index}_dev_acc | ${PYTHON_BIN} get_max.py ${strategy} 1>> "${local_log_path}/output/index${index}_${task_name}_result" 2>> "${local_log_path}/output/index${index}_${task_name}_result_all"
@@ -255,5 +260,5 @@ function get_max_result() {
 	> ${local_log_path}/output/index${index}_${task_name}_result_final
 }
 
-train_wrapper
+#train_wrapper
 get_max_result

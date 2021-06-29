@@ -38,8 +38,8 @@ export pretrained_model="macbert-large-chinese"
 task_name=$1
 gpus=$2
 
-#indexs=(0 1 2 3 4 few_all)
-indexs=(0)
+indexs=(0 1 2 3 4 few_all)
+#indexs=(0)
 #indexs=(3)
 #indexs=(4)
 #indexs=(few_all)

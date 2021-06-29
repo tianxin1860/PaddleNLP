@@ -296,17 +296,19 @@ def transform_eprstmt(example, label_normalize_dict=None, is_test=False, pattern
         return example
 
 
-def transform_ocnli(example, label_normalize_dict=None, is_test=False):
+def transform_ocnli(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 1
-        example['sentence1'] = example["sentence1"] + u'，[UNK]'
+        if pattern_id == 0:
+            example['sentence1'] = example["sentence1"] + u'，[UNK]'
 
         return example
     else:
         origin_label = example["label"]
         # Normalize some of the labels, eg. English -> Chinese
         example['text_label'] = label_normalize_dict[origin_label]
-        example['sentence1'] = example["sentence1"] + u'，[UNK]'
+        if pattern_id == 0:
+            example['sentence1'] = example["sentence1"] + u'，[UNK]'
 
         del example["label"]
 
@@ -318,6 +320,8 @@ def transform_csl(example, label_normalize_dict=None, is_test=False, pattern_id=
         example["label_length"] = 1
         if pattern_id == 0:
             example["sentence1"] = u'本文的内容[UNK]是:' + "，".join(example["keyword"]) + example["abst"]
+        if pattern_id == 1:
+            example["sentence1"] = u'本文的关键词[UNK]是:' + "，".join(example["keyword"]) + example["abst"]
 
         del example["abst"]
         del example["keyword"]
@@ -330,6 +334,8 @@ def transform_csl(example, label_normalize_dict=None, is_test=False, pattern_id=
 
         if pattern_id == 0:
             example["sentence1"] =  u'本文的内容[UNK]是:'  + "，".join(example["keyword"]) + example["abst"]
+        if pattern_id == 1:
+            example["sentence1"] = u'本文的关键词[UNK]是:' + "，".join(example["keyword"]) + example["abst"]
 
         del example["label"]
         del example["abst"]
@@ -386,7 +392,7 @@ def transform_bustm(example, label_normalize_dict=None, is_test=False, pattern_i
         return example
 
 
-def transform_chid(example, label_normalize_dict=None, is_test=False):
+def transform_chid(example, label_normalize_dict=None, is_test=False, pattern_id=0):
 
     if is_test:
         example["label_length"] = 4
