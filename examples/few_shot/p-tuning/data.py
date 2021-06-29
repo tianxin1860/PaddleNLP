@@ -220,7 +220,7 @@ def transform_iflytek(example, label_normalize_dict=None, is_test=False, pattern
         # When do_test, set label_length field to point
         # where to insert [MASK] id
         example["label_length"] = 2
-        example["sentence1"] = u'做为一款[UNK]应用，' + example["sentence"]
+        example["sentence1"] = u'作为一款[UNK]应用，' + example["sentence"]
         del example["sentence"]
 
         return example
@@ -237,7 +237,7 @@ def transform_iflytek(example, label_normalize_dict=None, is_test=False, pattern
             example['label_des'] = "旅游"
 
         example["text_label"] = example["label_des"]
-        example["sentence1"] = u'做为一款[UNK]应用，' + example["sentence"]
+        example["sentence1"] = u'作为一款[UNK]应用，' + example["sentence"]
 
         del example["sentence"]
         del example["label_des"]
