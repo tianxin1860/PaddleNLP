@@ -346,8 +346,6 @@ def write_bustm(task_name, output_file, pred_labels, probs, is_test=True, min_pr
                 f.write(str_test_example)
     else:
         test_ds = load_dataset("fewclue", name="bustm", splits=("unlabeled"))
-        #data_file = "/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_" + task_name + "/unlabeled_demo.json"
-        #test_ds = load_dataset("fewclue", name="bustm", data_files=data_file)
 
         test_example = {}
         with open(output_file, 'w', encoding='utf-8') as f:
@@ -488,7 +486,6 @@ def write_eprstmt(task_name, output_file, pred_labels, probs, is_test=True, min_
     else:
         #predict for unlabeled.json
         test_ds = load_dataset("fewclue", name="eprstmt", splits=("unlabeled"))
-        #test_ds = load_dataset("fewclue", name="eprstmt", data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
 
         all_examples = []
         with open(output_file, 'w', encoding='utf-8') as f:

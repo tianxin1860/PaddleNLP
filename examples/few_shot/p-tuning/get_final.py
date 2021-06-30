@@ -50,7 +50,6 @@ if __name__=="__main__":
     index_name = index if index != "few_all" else "all"
 
     if task_name not in ["eprstmt", "csldcp", "bustm"]:
-		# /ssd2/tianxin04/global_data/paddlenlp//examples/few_shot/ptpet_macbert-large-chinese//output/bs8_lr2E-5_pnum1_maxlen512_ptid1/tnews/index1_1epoch_0iter_30step_tnewsf_predict.json
         best_predict_file = "index" + index + "_" + epoch  + "epoch_" + max_iter + "iter_" + max_step + "step_" + task_name + "f_predict.json"
         std_name = task_name + "f_predict_" + index_name + ".json"
     else:

@@ -76,12 +76,3 @@ ensemble_dict = {
     'ocnli': ensemble_eprstmt,
     'cluewsc': ensemble_eprstmt
 }
-
-if __name__ == "__main__":
-    all_unlabdled_examples = [
-        "/home/tianxin04/global_data/paddlenlp//examples/few_shot/ptpet_macbert-large-chinese//output/bs8_lr2E-5_pnum8_maxlen512_ptid1/eprstmt/index0_1epoch_1iter_150step_unlabeled.json",
-        "/home/tianxin04/global_data/paddlenlp//examples/few_shot/ptpet_macbert-large-chinese//output/bs8_lr2E-5_pnum8_maxlen512_ptid1/eprstmt/index0_1epoch_1iter_4900step_unlabeled.json",
-        "/home/tianxin04/global_data/paddlenlp//examples/few_shot/ptpet_macbert-large-chinese//output/bs8_lr2E-5_pnum8_maxlen512_ptid1/eprstmt/index0_6epoch_0iter_40step_unlabeled.json"
-    ]
-    result = ensemble(all_unlabdled_examples, ensemble_dict["eprstmt"], 0)
-    print(result)
