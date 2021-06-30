@@ -10,7 +10,6 @@ task_name=$1
 gpus=$2
 
 indexs=(0 1 2 3 4 few_all)
-indexs=(0)
 
 for index in ${indexs[@]}; do
 	if [[ ${pretrained_model} == "ernie1p0" ]]; then
