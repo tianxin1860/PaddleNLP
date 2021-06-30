@@ -133,15 +133,18 @@ def do_train():
         "fewclue",
         name=args.task_name,
         splits=("train_0", "test_public", "test"))
+        #splits=("train_0", "dev_0", "test"))
+        # splits=("train_0", "dev_0", "test"))
 
-    #model = ppnlp.transformers.ErnieForSequenceClassification.from_pretrained(
-    #    'ernie-1.0', num_classes=2)
-    #tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
 
-    model = ppnlp.transformers.BertForSequenceClassification.from_pretrained(
-        args.language_model)
-    tokenizer = ppnlp.transformers.BertTokenizer.from_pretrained(
-        args.language_model)
+    model = ppnlp.transformers.ErnieForSequenceClassification.from_pretrained(
+       'ernie-1.0', num_classes=2)
+    tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
+
+    # model = ppnlp.transformers.BertForSequenceClassification.from_pretrained(
+    #     args.language_model)
+    # tokenizer = ppnlp.transformers.BertTokenizer.from_pretrained(
+    #     args.language_model)
 
     processor = processor_dict[args.task_name](args.negative_num)
     train_ds = processor.get_train_datasets(train_ds,
@@ -267,7 +270,7 @@ def do_train():
         print("epoch:{}, dev_accuracy:{:.3f}, total_num:{}".format(
             epoch, test_public_accuracy, total_num))
 
-        if test_public_accuracy > max_dev_acc:
+        if max_dev_acc > 0 and test_public_accuracy > max_dev_acc:
             y_pred_labels = do_predict(
                 model,
                 tokenizer,

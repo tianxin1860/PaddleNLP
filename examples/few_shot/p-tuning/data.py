@@ -252,6 +252,9 @@ def transform_tnews(example, label_normalize_dict=None, is_test=False, pattern_i
             example["sentence1"] = u'这是一条关于[UNK]的新闻，' + example["sentence"]
         elif pattern_id == 1:
             example["sentence1"] = u'下面报道一则[UNK]新闻，' + example["sentence"]
+        elif pattern_id == 2:
+            example["sentence1"] = example["sentence"] + '综合来讲是[UNK]的内容'
+
         del example["sentence"]
         return example
     else:
@@ -263,6 +266,9 @@ def transform_tnews(example, label_normalize_dict=None, is_test=False, pattern_i
             example["sentence1"] = u'这是一条关于[UNK]的新闻，' + example["sentence"]
         elif pattern_id == 1:
             example["sentence1"] = u'下面报道一则[UNK]新闻，' + example["sentence"]
+        elif pattern_id == 2:
+            example["sentence1"] = example["sentence"] + '综合来讲是[UNK]的内容'
+
         # example["sentence1"] = example["sentence"]
         example["text_label"] = example["label_desc"]
 

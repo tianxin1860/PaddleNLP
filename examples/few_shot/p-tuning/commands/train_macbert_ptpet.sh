@@ -88,7 +88,7 @@ if [[ ${task_name} == "eprstmt" ]]; then
 fi
 
 if [[ ${task_name} == "tnews" ]]; then
-    pattern_ids=(1)
+    pattern_ids=(2)
     batch_size=(8)
     learning_rate=(2E-5 5E-5)
     p_embedding_num=(1 8)
