@@ -14,6 +14,8 @@
 # limitations under the License.
 """Create masked LM/next sentence masked_lm examples for BERT/BERT-wwm/ERNIE 1.0."""
 
+# -*- coding: utf-8 -*-
+
 import argparse
 import collections
 import h5py

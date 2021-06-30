@@ -186,21 +186,13 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
     # train_ds, dev_ds, test_ds, unlabeled_ds = load_dataset(
     #     "fewclue",
     #     name=args.task_name,
-    #     splits=("train_" + args.index, "dev_" + args.index, "test", "unlabeled"))
+    #     splits=("train_" + args.index, "test_public", "test", "unlabeled"))
 
     train_ds, dev_ds, test_ds, unlabeled_ds = load_dataset(
         "fewclue",
         name=args.task_name,
-        splits=("train_" + args.index, "test_public", "test", "unlabeled"))
+        splits=("train_" + args.index, "dev_" + args.index, "test", "unlabeled"))
 
-    # train_ds, dev_ds, test_ds = load_dataset(
-    #     "fewclue",
-    #     name=args.task_name,
-    #     splits=("train_" + args.index, "dev_" + args.index, "test"))
-
-    #unlabeled_ds = load_dataset("fewclue", name=args.task_name, data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
-    # data_file = "/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_" + args.task_name + "/unlabeled_demo.json"
-    # unlabeled_ds = load_dataset("fewclue", name=args.task_name, data_files=data_file)
 
     if unlabeled_file:
         print("load_unlabeled_file:{}".format(unlabeled_file))
@@ -208,9 +200,7 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
         print("self_training_unlabeled_example:{}".format(len(tmp_unlabeled_ds)))
         train_ds.new_data += tmp_unlabeled_ds.new_data
         print("using extended train_ds:{}".format(len(train_ds)))
-        # splits=("train_" + args.index, "test_public", "test", "unlabeled"))
-        #splits=("train_" + args.index, "test_public", "test"))
-
+   
     # Task related transform operations, eg: numbert label -> text_label, english -> chinese
     transform_fn = partial(
         transform_fn_dict[args.task_name], label_normalize_dict=label_norm_dict, pattern_id=args.pattern_id)
