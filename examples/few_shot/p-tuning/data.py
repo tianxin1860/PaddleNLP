@@ -419,7 +419,7 @@ def transform_chid(example, label_normalize_dict=None, is_test=False, pattern_id
         return example
 
 
-def transform_cluewsc(example, label_normalize_dict=None, is_test=False):
+def transform_cluewsc(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 2
         text = example["text"]

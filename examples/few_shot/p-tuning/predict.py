@@ -459,7 +459,7 @@ def write_tnews(task_name, output_file, pred_labels, probs, is_test=True, min_pr
         return None
 
 
-def write_cluewsc(task_name, output_file, pred_labels):
+def write_cluewsc(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
     test_ds = load_dataset("fewclue", name="cluewsc", splits=("test"))
     test_example = {}
     with open(output_file, 'w', encoding='utf-8') as f:

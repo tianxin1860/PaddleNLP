@@ -76,16 +76,15 @@ fi
 if [[ ${task_name} == "cluewsc" ]]; then
     pattern_ids=(0)
     min_pred_prob=0.92
-    eval_steps=20
 fi
 
 # for debug
 pattern_ids=(0)
-batch_size=(4)
-learning_rate=(2E-4)
-p_embedding_num=(3)
+batch_size=(8)
+learning_rate=(2E-5)
+p_embedding_num=(8)
 confidences=(1.0)
-epoch=2
+epoch=10
 
 function train() {
 	local task_name=$1
@@ -95,7 +94,7 @@ function train() {
     local pt_id=$5
 	local confidence=${confidence}
 
-	strategy="bs${bs}_lr${lr}_pnum${p_num}_maxlen${max_seq_len}_ptid${pt_id}"
+	strategy="bs${bs}_lr${lr}_pnum${p_num}_maxlen${max_seq_len}_ptid${pt_id}_confidence${confidence}"
 
 	save_checkpoint_dir="${local_log_path}/checkpoints/${strategy}/${task_name}"
 	output_dir="${local_log_path}/output/${strategy}/${task_name}"
@@ -159,7 +158,10 @@ function get_max_result() {
 	for bs in ${batch_size[@]}; do
 	for p_num in ${p_embedding_num[@]}; do
 	for pt_id in ${pattern_ids[@]}; do
+	for confidence in ${confidences[@]}; do
+	local confidence=${confidence}
 
+		strategy="bs${bs}_lr${lr}_pnum${p_num}_maxlen${max_seq_len}_ptid${pt_id}_confidence${confidence}"
 		strategy="bs${bs}_lr${lr}_pnum${p_num}_maxlen${max_seq_len}_ptid${pt_id}"
 		
 		output_dir="${local_log_path}/output/${strategy}/${task_name}"
@@ -169,10 +171,9 @@ function get_max_result() {
 
 		grep "dev_accuracy" ${log_file} > ${output_dir}/index${index}_dev_acc
 		# only used dev_set to select model
-		# grep "test_accuracy" ${log_file} > ${output_dir}/test_acc
 		cat ${output_dir}/index${index}_dev_acc | ${PYTHON_BIN} get_max.py ${strategy} 1>> "${local_log_path}/output/index${index}_${task_name}_result" 2>> "${local_log_path}/output/index${index}_${task_name}_result_all"
-		#paste ${output_dir}/dev_acc ${output_dir}/test_acc | ${PYTHON_BIN} get_max.py ${strategy} 1>> "${local_log_path}/output/index${index}_${task_name}_result" 2>> "${local_log_path}/output/index${index}_${task_name}_result_all"
 
+	done
 	done
 	done
 	done

@@ -188,10 +188,17 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
     #     name=args.task_name,
     #     splits=("train_" + args.index, "test_public", "test", "unlabeled"))
 
-    train_ds, dev_ds, test_ds, unlabeled_ds = load_dataset(
-        "fewclue",
-        name=args.task_name,
-        splits=("train_" + args.index, "dev_" + args.index, "test", "unlabeled"))
+
+    if args.task_name == "cluewsc":
+        train_ds, dev_ds, test_ds = load_dataset(
+            "fewclue",
+            name=args.task_name,
+            splits=("train_" + args.index, "dev_" + args.index, "test"))
+    else:
+        train_ds, dev_ds, test_ds, unlabeled_ds = load_dataset(
+            "fewclue",
+            name=args.task_name,
+            splits=("train_" + args.index, "dev_" + args.index, "test", "unlabeled"))
 
 
     if unlabeled_file:
@@ -219,7 +226,9 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
     train_ds = train_ds.map(transform_fn, lazy=False)
     dev_ds = dev_ds.map(transform_fn, lazy=False)
     test_ds = test_ds.map(predict_transform_fn, lazy=False)
-    unlabeled_ds = unlabeled_ds.map(predict_transform_fn, lazy=False)
+
+    if args.task_name != "cluewsc":
+        unlabeled_ds = unlabeled_ds.map(predict_transform_fn, lazy=False)
 
     #model = ErnieForPretraining.from_pretrained('ernie-1.0')
     #tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
@@ -300,12 +309,13 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
         batchify_fn=predict_batchify_fn,
         trans_fn=trans_func_test)
 
-    unlabeled_data_loader = create_dataloader(
-        unlabeled_ds,
-        mode='eval',
-        batch_size=args.predict_batch_size,
-        batchify_fn=predict_batchify_fn,
-        trans_fn=trans_func_test)
+    if args.task_name != "cluewsc":
+        unlabeled_data_loader = create_dataloader(
+            unlabeled_ds,
+            mode='eval',
+            batch_size=args.predict_batch_size,
+            batchify_fn=predict_batchify_fn,
+            trans_fn=trans_func_test)
 
     if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
         state_dict = paddle.load(args.init_from_ckpt)
@@ -444,20 +454,23 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
                     print("start set parameters to model")
                     model.set_dict(state_dict)
 
-                    # predict unlabeled_data
-                    print("predicting unlabel_data......")
-                    y_pred_labels, probs = predict_fn(model, tokenizer, unlabeled_data_loader, label_norm_dict)
-                    output_file = os.path.join(args.output_dir,
-                                    "index" + args.index + "_" + str(best_epoch) +
-                                    "epoch_" + str(iter_num) + "iter_" + str(best_step) + "step_" + unlabeled_file_dict[args.task_name])
-                    print("[save unlabeled_result]{}".format(output_file))
-                    unlabeled_examples = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, probs, is_test=False, min_prob=args.min_prob)
+                    if args.task_name != "cluewsc":
+                        # predict unlabeled_data
+                        print("predicting unlabel_data......")
+                        y_pred_labels, probs = predict_fn(model, tokenizer, unlabeled_data_loader, label_norm_dict)
+                        output_file = os.path.join(args.output_dir,
+                                        "index" + args.index + "_" + str(best_epoch) +
+                                        "epoch_" + str(iter_num) + "iter_" + str(best_step) + "step_" + unlabeled_file_dict[args.task_name])
+                        print("[save unlabeled_result]{}".format(output_file))
+                        unlabeled_examples = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, probs, is_test=False, min_prob=args.min_prob)
 
-                    return {'unlabeled_file': output_file,
-                            'history_max_acc': max_dev_acc, 
-                            'best_checkpoint': best_checkpoint,
-                            'last_train': False,
-                            'pretrained_model': model}
+                        return {'unlabeled_file': output_file,
+                                'history_max_acc': max_dev_acc, 
+                                'best_checkpoint': best_checkpoint,
+                                'last_train': False,
+                                'pretrained_model': model}
+                    else:
+                        return None
                 else:
                     # if continuously 50 steps not geneate better performance, then end self-traning
                     not_better_num_step += 1
@@ -522,25 +535,28 @@ def do_train(args, iter_num=0, unlabeled_file=None, history_max_acc=0.0, best_ch
         print("start set parameters to model")
         model.set_dict(state_dict)
 
-        # predict unlabeled_data
-        print("predicting unlabel_data......")
-        y_pred_labels, probs = predict_fn(model, tokenizer, unlabeled_data_loader, label_norm_dict)
-        output_file = os.path.join(args.output_dir,
-                        "index" + args.index + "_" + str(best_epoch) +
-                        "epoch_" + str(iter_num) + "iter_" + str(best_step) + "step_" + unlabeled_file_dict[args.task_name])
-        print("[save unlabeled_result]{}".format(output_file))
-        unlabeled_examples = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, probs, is_test=False, min_prob=args.min_prob)
+        if args.task_name != "cluewsc":
+            # predict unlabeled_data
+            print("predicting unlabel_data......")
+            y_pred_labels, probs = predict_fn(model, tokenizer, unlabeled_data_loader, label_norm_dict)
+            output_file = os.path.join(args.output_dir,
+                            "index" + args.index + "_" + str(best_epoch) +
+                            "epoch_" + str(iter_num) + "iter_" + str(best_step) + "step_" + unlabeled_file_dict[args.task_name])
+            print("[save unlabeled_result]{}".format(output_file))
+            unlabeled_examples = write_fn[args.task_name](args.task_name, output_file, y_pred_labels, probs, is_test=False, min_prob=args.min_prob)
 
-        if last_train:
-            print("Last train use labeled data finished:{} ************************".format(iter_num))
-            return None
+            if last_train:
+                print("Last train use labeled data finished:{} ************************".format(iter_num))
+                return None
+            else:
+                # print("return from first_train")
+                return {'unlabeled_file': output_file,
+                    'history_max_acc': max_dev_acc, 
+                    'best_checkpoint': best_checkpoint,
+                    'last_train': False,
+                    'pretrained_model': model}
         else:
-            # print("return from first_train")
-            return {'unlabeled_file': output_file,
-                'history_max_acc': max_dev_acc, 
-                'best_checkpoint': best_checkpoint,
-                'last_train': False,
-                'pretrained_model': model}
+            return None
     else:
         # Stop training
         print("Stop training at iter_num:{} ********************************".format(iter_num))
