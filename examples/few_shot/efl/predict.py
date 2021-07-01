@@ -66,8 +66,6 @@ def do_predict(model, tokenizer, data_loader, task_label_description):
         for idx, label in enumerate(task_label_description.keys())
     }
 
-    class_num = len(task_label_description)
-
     all_prediction_probs = []
 
     for batch in data_loader:
@@ -80,12 +78,7 @@ def do_predict(model, tokenizer, data_loader, task_label_description):
         all_prediction_probs.append(prediction_probs)
 
     all_prediction_probs = np.concatenate(all_prediction_probs, axis=0)
-
-    all_prediction_probs = np.reshape(all_prediction_probs, (-1, class_num, 2))
-
-    prediction_pos_probs = all_prediction_probs[:, :, 1]
-    prediction_pos_probs = np.reshape(prediction_pos_probs, (-1, class_num))
-    y_pred_index = np.argmax(prediction_pos_probs, axis=-1)
+    y_pred_index = np.argmax(all_prediction_probs, axis=-1)
 
     y_preds = [index2label[idx] for idx in y_pred_index]
 

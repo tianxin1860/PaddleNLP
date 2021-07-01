@@ -245,11 +245,7 @@ iflytek_label_description = {
 
 bustm_label_description = {"1": "entail", "0": "not_entail"}
 
-ocnli_label_description = {
-    "contradiction": "不",
-    "entailment": "很",
-    "neutral": "无"
-}
+ocnli_label_description = {"contradiction": 0, "entailment": 1, "neutral": 2}
 
 # Note: chid_label_description has no effect for model performance
 # just for get candidate number from chid_label_description

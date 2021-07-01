@@ -40,18 +40,9 @@ def do_evaluate(model, tokenizer, data_loader, task_label_description):
         all_prediction_probs.append(prediction_probs)
         all_labels.append(true_labels.numpy())
 
-    all_labels = np.concatenate(all_labels, axis=0)
+    y_true_index = np.concatenate(all_labels, axis=0)
     all_prediction_probs = np.concatenate(all_prediction_probs, axis=0)
-    all_prediction_probs = np.reshape(all_prediction_probs, (-1, class_num, 2))
-
-    prediction_pos_probs = all_prediction_probs[:, :, 1]
-    prediction_pos_probs = np.reshape(prediction_pos_probs, (-1, class_num))
-    y_pred_index = np.argmax(prediction_pos_probs, axis=-1)
-
-    y_true_index = np.array([
-        true_label_index for idx, true_label_index in enumerate(all_labels)
-        if idx % class_num == 0
-    ])
+    y_pred_index = np.argmax(all_prediction_probs, axis=-1)
 
     total_num = len(y_true_index)
     correct_num = (y_pred_index == y_true_index).sum()

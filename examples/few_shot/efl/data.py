@@ -148,46 +148,34 @@ class OcnliProcessor(DataProcessor):
 
         if phase == "train":
             for example in datasets:
-                true_label = str(example["label"])
-                neg_examples = []
-                for label, label_description in task_label_description.items():
+                try:
                     new_example = dict()
                     new_example["sentence1"] = example['sentence1']
-                    new_example["sentence2"] = label_description + example[
-                        'sentence2']
-
-                    # Todo: handle imbanlanced example, maybe hurt model performance 
-                    if true_label == label:
-                        new_example["label"] = 1
-                        examples.append(new_example)
-                    else:
-                        new_example["label"] = 0
-                        neg_examples.append(new_example)
-                neg_examples = random.sample(neg_examples, self.neg_num)
-                examples.extend(neg_examples)
+                    new_example["sentence2"] = example['sentence2']
+                    new_example["label"] = task_label_description[example[
+                        "label"]]
+                    examples.append(new_example)
+                except:
+                    continue
 
         elif phase == "dev":
             for example in datasets:
-                true_label = example["label"]
-                for label, label_description in task_label_description.items():
+                try:
                     new_example = dict()
                     new_example["sentence1"] = example['sentence1']
-                    new_example["sentence2"] = label_description + example[
-                        'sentence2']
-                    # Get true_label's index at task_label_description for evaluate
-                    true_label_index = list(task_label_description.keys(
-                    )).index(true_label)
-                    new_example["label"] = true_label_index
+                    new_example["sentence2"] = example['sentence2']
+                    new_example["label"] = task_label_description[example[
+                        "label"]]
                     examples.append(new_example)
+                except:
+                    continue
 
         elif phase == "test":
             for example in datasets:
-                for label, label_description in task_label_description.items():
-                    new_example = dict()
-                    new_example["sentence1"] = example['sentence1']
-                    new_example["sentence2"] = label_description + example[
-                        'sentence2']
-                    examples.append(new_example)
+                # new_example = dict()
+                # new_example["sentence1"] = example['sentence1']
+                # new_example["sentence2"] = example['sentence2']
+                examples.append(example)
 
         return MapDataset(examples)
 

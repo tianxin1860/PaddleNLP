@@ -109,7 +109,12 @@ def parse_args():
     parser.add_argument(
         '--save_steps',
         type=int,
-        default=10000000,
+        default=100,
+        help="Inteval steps to save checkpoint")
+    parser.add_argument(
+        '--eval_steps',
+        type=int,
+        default=100,
         help="Inteval steps to save checkpoint")
     return parser.parse_args()
 
@@ -139,7 +144,7 @@ def do_train():
     #tokenizer = ppnlp.transformers.ErnieTokenizer.from_pretrained('ernie-1.0')
 
     model = ppnlp.transformers.BertForSequenceClassification.from_pretrained(
-        args.language_model)
+        args.language_model, num_classes=3)
     tokenizer = ppnlp.transformers.BertTokenizer.from_pretrained(
         args.language_model)
 
@@ -149,6 +154,7 @@ def do_train():
 
     public_test_ds = processor.get_dev_datasets(
         public_test_ds, TASK_LABELS_DESC[args.task_name])
+
     test_ds = processor.get_test_datasets(test_ds,
                                           TASK_LABELS_DESC[args.task_name])
 
@@ -253,6 +259,31 @@ def do_train():
                 paddle.save(model.state_dict(), save_param_path)
                 tokenizer.save_pretrained(save_dir)
 
+            if global_step % args.eval_steps == 0 and rank == 0:
+                test_public_accuracy, total_num = do_evaluate(
+                    model,
+                    tokenizer,
+                    public_test_data_loader,
+                    task_label_description=TASK_LABELS_DESC[args.task_name])
+
+                print("epoch:{}, dev_accuracy:{:.3f}, total_num:{}".format(
+                    epoch, test_public_accuracy, total_num))
+
+                y_pred_labels = do_predict(
+                    model,
+                    tokenizer,
+                    test_data_loader,
+                    task_label_description=TASK_LABELS_DESC[args.task_name])
+
+                output_file = os.path.join(
+                    args.output_dir, "epoch" + str(epoch) + "_step" +
+                    str(global_step) + predict_file[args.task_name])
+                print("[save predict_result]:{}".format(output_file))
+                write_fn[args.task_name](args.task_name, output_file,
+                                         y_pred_labels)
+
+                max_dev_acc = test_public_accuracy
+
             loss.backward()
             optimizer.step()
             lr_scheduler.step()
@@ -274,12 +305,13 @@ def do_train():
                 test_data_loader,
                 task_label_description=TASK_LABELS_DESC[args.task_name])
 
-            output_file = os.path.join(args.output_dir,
-                                    str(epoch) + predict_file[args.task_name])
+            output_file = os.path.join(
+                args.output_dir, str(epoch) + predict_file[args.task_name])
             print("[save predict_result]:{}".format(output_file))
             write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
 
             max_dev_acc = test_public_accuracy
+
 
 """
         if rank == 0:
@@ -290,7 +322,6 @@ def do_train():
             paddle.save(model.state_dict(), save_param_path)
             tokenizer.save_pretrained(save_dir)
 """
-
 
 if __name__ == "__main__":
     args = parse_args()
