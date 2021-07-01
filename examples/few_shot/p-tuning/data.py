@@ -214,13 +214,13 @@ def convert_chid_example(example,
         return src_ids, token_type_ids, mask_positions, mask_lm_labels, candidate_labels_ids
 
 
-def transform_iflytek(example, label_normalize_dict=None, is_test=False):
+def transform_iflytek(example, label_normalize_dict=None, is_test=False, pattern_id=0):
 
     if is_test:
         # When do_test, set label_length field to point
         # where to insert [MASK] id
         example["label_length"] = 2
-        example["sentence1"] = u'做为一款[UNK]应用，' +example["sentence"]
+        example["sentence1"] = u'作为一款[UNK]应用，' + example["sentence"]
         del example["sentence"]
 
         return example
@@ -237,7 +237,7 @@ def transform_iflytek(example, label_normalize_dict=None, is_test=False):
             example['label_des'] = "旅游"
 
         example["text_label"] = example["label_des"]
-        example["sentence1"] = u'做为一款[UNK]应用，' + example["sentence"]
+        example["sentence1"] = u'作为一款[UNK]应用，' + example["sentence"]
 
         del example["sentence"]
         del example["label_des"]
@@ -245,11 +245,16 @@ def transform_iflytek(example, label_normalize_dict=None, is_test=False):
         return example
 
 
-def transform_tnews(example, label_normalize_dict=None, is_test=False):
+def transform_tnews(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 2
-        example["sentence1"] = u'这是一条关于[UNK]的新闻，' + example["sentence"]
-        # example["sentence1"] = example["sentence"]
+        if pattern_id == 0:
+            example["sentence1"] = u'这是一条关于[UNK]的新闻，' + example["sentence"]
+        elif pattern_id == 1:
+            example["sentence1"] = u'下面报道一则[UNK]新闻，' + example["sentence"]
+        elif pattern_id == 2:
+            example["sentence1"] = example["sentence"] + '综合来讲是[UNK]的内容'
+
         del example["sentence"]
         return example
     else:
@@ -257,7 +262,13 @@ def transform_tnews(example, label_normalize_dict=None, is_test=False):
         # Normalize some of the labels, eg. English -> Chinese
         example['label_desc'] = label_normalize_dict[origin_label]
 
-        example["sentence1"] = u'这是一条关于[UNK]的新闻，' + example["sentence"]
+        if pattern_id == 0:
+            example["sentence1"] = u'这是一条关于[UNK]的新闻，' + example["sentence"]
+        elif pattern_id == 1:
+            example["sentence1"] = u'下面报道一则[UNK]新闻，' + example["sentence"]
+        elif pattern_id == 2:
+            example["sentence1"] = example["sentence"] + '综合来讲是[UNK]的内容'
+
         # example["sentence1"] = example["sentence"]
         example["text_label"] = example["label_desc"]
 
@@ -291,28 +302,32 @@ def transform_eprstmt(example, label_normalize_dict=None, is_test=False, pattern
         return example
 
 
-def transform_ocnli(example, label_normalize_dict=None, is_test=False):
+def transform_ocnli(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 1
-        example['sentence1'] = example["sentence1"] + u'，[UNK]'
+        if pattern_id == 0:
+            example['sentence1'] = example["sentence1"] + u'，[UNK]'
 
         return example
     else:
         origin_label = example["label"]
         # Normalize some of the labels, eg. English -> Chinese
         example['text_label'] = label_normalize_dict[origin_label]
-        example['sentence1'] = example["sentence1"] + u'，[UNK]'
+        if pattern_id == 0:
+            example['sentence1'] = example["sentence1"] + u'，[UNK]'
 
         del example["label"]
 
         return example
 
 
-def transform_csl(example, label_normalize_dict=None, is_test=False):
+def transform_csl(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 1
-        example["sentence1"] = u'本文的内容[UNK]是:' + "，".join(example[
-            "keyword"]) + example["abst"]
+        if pattern_id == 0:
+            example["sentence1"] = u'本文的内容[UNK]是:' + "，".join(example["keyword"]) + example["abst"]
+        if pattern_id == 1:
+            example["sentence1"] = u'本文的关键词[UNK]是:' + "，".join(example["keyword"]) + example["abst"]
 
         del example["abst"]
         del example["keyword"]
@@ -323,8 +338,10 @@ def transform_csl(example, label_normalize_dict=None, is_test=False):
         # Normalize some of the labels, eg. English -> Chinese
         example['text_label'] = label_normalize_dict[origin_label]
 
-        example["sentence1"] =  u'本文的内容[UNK]是:'  + "，".join(example[
-            "keyword"]) + example["abst"]
+        if pattern_id == 0:
+            example["sentence1"] =  u'本文的内容[UNK]是:'  + "，".join(example["keyword"]) + example["abst"]
+        if pattern_id == 1:
+            example["sentence1"] = u'本文的关键词[UNK]是:' + "，".join(example["keyword"]) + example["abst"]
 
         del example["label"]
         del example["abst"]
@@ -333,10 +350,11 @@ def transform_csl(example, label_normalize_dict=None, is_test=False):
         return example
 
 
-def transform_csldcp(example, label_normalize_dict=None, is_test=False):
+def transform_csldcp(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 2
-        example["sentence1"] = u'这篇关于[UNK]的文章讲了' + example["content"]
+        if pattern_id == 0:
+            example["sentence1"] = u'这篇关于[UNK]的文章讲了' + example["content"]
         del example["content"]
         return example
     else:
@@ -344,7 +362,8 @@ def transform_csldcp(example, label_normalize_dict=None, is_test=False):
         # Normalize some of the labels, eg. English -> Chinese
         normalized_label = label_normalize_dict[origin_label]
         example['text_label'] = normalized_label
-        example["sentence1"] = u'这篇关于[UNK]的文章讲了' + example["content"]
+        if pattern_id == 0:
+            example["sentence1"] = u'这篇关于[UNK]的文章讲了' + example["content"]
 
         del example["label"]
         del example["content"]
@@ -352,17 +371,26 @@ def transform_csldcp(example, label_normalize_dict=None, is_test=False):
         return example
 
 
-def transform_bustm(example, label_normalize_dict=None, is_test=False):
+def transform_bustm(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         # Label: ["很"， "不"]
         example["label_length"] = 1
-        example["sentence1"] = u'[UNK]' + example["sentence1"]
+        if pattern_id == 0:
+            example["sentence1"] = u'[UNK]' + example["sentence1"]
+        elif pattern_id == 1:
+            example["sentence1"] = example["sentence1"] + '和' + example["sentence2"] + '意思[UNK]同'
+            del example["sentence2"]
         return example
     else:
         origin_label = str(example["label"])
 
         # Normalize some of the labels, eg. English -> Chinese
-        example["sentence1"] = u'[UNK]' + example["sentence1"]
+        if pattern_id == 0:
+            example["sentence1"] = u'[UNK]' + example["sentence1"]
+        elif pattern_id == 1:
+            example["sentence1"] = example["sentence1"] + '和' + example["sentence2"] + '意思[UNK]同'
+            del example["sentence2"]
+
         example['text_label'] = label_normalize_dict[origin_label]
 
         del example["label"]
@@ -370,7 +398,7 @@ def transform_bustm(example, label_normalize_dict=None, is_test=False):
         return example
 
 
-def transform_chid(example, label_normalize_dict=None, is_test=False):
+def transform_chid(example, label_normalize_dict=None, is_test=False, pattern_id=0):
 
     if is_test:
         example["label_length"] = 4
@@ -391,7 +419,7 @@ def transform_chid(example, label_normalize_dict=None, is_test=False):
         return example
 
 
-def transform_cluewsc(example, label_normalize_dict=None, is_test=False):
+def transform_cluewsc(example, label_normalize_dict=None, is_test=False, pattern_id=0):
     if is_test:
         example["label_length"] = 2
         text = example["text"]

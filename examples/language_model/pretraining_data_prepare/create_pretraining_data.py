@@ -14,6 +14,8 @@
 # limitations under the License.
 """Create masked LM/next sentence masked_lm examples for BERT/BERT-wwm/ERNIE 1.0."""
 
+# -*- coding: utf-8 -*-
+
 import argparse
 import collections
 import h5py
@@ -233,21 +235,6 @@ def get_whole_word_mask_tokens(tokens, words, max_word_length=4):
     Then, we add the '##' mark on chinese characters which are in the middle of Chinese words.
     And if the tokens are not chinese characters, we just exploit the results of WordPiece tokenization as words.
     Such as, 
-         - text line : 通过利用mercer核，将样本从输入空间映射到高维特征空间，使原来没有显现的特征突现出来，取得了很好的图像分割效果。
-         - the input tokens (after WordPiece): 
-            ['通', '过', '利', '用', 'me', '##rc', '##er', '核', '，', '将', '样', '本', '从', '输', '入', '空', '间', '映', 
-            '射', '到', '高', '维', '特', '征', '空', '间', '，', '使', '原', '来', '没', '有', '显', '现', '的', '特', '征', 
-            '突', '现', '出', '来', '，', '取', '得', '了', '很', '好', '的', '图', '像', '分', '割', '效', '果', '。']
-        - the Chinese words (after Chinese word segmentation like jieba)
-            ['通过', '利用', 'mercer', '核', '，', '将', '样本', '从', '输入', '空间', '映射', '到', '高维', '特征', 
-            '空间', '，', '使', '原来', '没有', '显现', '的', '特征', '突现', '出来', '，', '取得', '了', '很', '好', 
-            '的', '图像', '分割', '效果', '。']
-        - the output whole word mask tokens:
-            ['通', '##过', '利', '##用', 'me', '##rc', '##er', '核', '，', '将', '样', '##本', '从', '输', '##入', 
-            '空', '##间', '映', '##射', '到', '高', '##维', '特', '##征', '空', '##间', '，', '使', '原', '##来', 
-            '没', '##有', '显', '##现', '的', '特', '##征', '突', '##现', '出', '##来', '，', '取', '##得', '了', 
-            '很', '好', '的', '图', '##像', '分', '##割', '效', '##果', '。']
-
     Args:
         tokens(list(str)): The sequence of tokens, which are from the WordPiece tokenization.
         words(list(str)): The sequence of Chinese words.
@@ -270,7 +257,6 @@ def get_whole_word_mask_tokens(tokens, words, max_word_length=4):
             continue
 
         # add "##" mark on the middel tokens of Chinese words
-        # such as ["通过", "利用"] -> ["通", "##过"， "利", "##用"] 
         has_add = False
         for length in range(max_word_length, 0, -1):
             if i + length > len(tokens):

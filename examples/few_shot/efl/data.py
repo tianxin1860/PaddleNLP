@@ -518,8 +518,9 @@ class ChidProcessor(DataProcessor):
                 candidates = example["candidates"]
                 for idx, cantidate in enumerate(candidates):
                     new_example = dict()
-                    new_example["sentence1"] = example["content"]
-                    new_example["sentence2"] = "位置#idiom#处的成语应该填写" + cantidate
+                    new_example["sentence1"] = example["content"].replace(
+                        "#idiom#", cantidate)
+                    #new_example["sentence2"] = "位置#idiom#处的成语应该填写" + cantidate
 
                     if idx == true_label_index:
                         new_example["label"] = 1
@@ -535,8 +536,10 @@ class ChidProcessor(DataProcessor):
                 candidates = example["candidates"]
                 for idx, cantidate in enumerate(candidates):
                     new_example = dict()
-                    new_example["sentence1"] = example["content"]
-                    new_example["sentence2"] = "位置#idiom#处的成语应该填写" + cantidate
+                    #new_example["sentence1"] = example["content"]
+                    new_example["sentence1"] = example["content"].replace(
+                        "#idiom#", cantidate)
+                    #new_example["sentence2"] = "位置#idiom#处的成语应该填写" + cantidate
 
                     # Get true_label's index at task_label_description for evaluate
                     true_label_index = int(true_label)
@@ -548,8 +551,10 @@ class ChidProcessor(DataProcessor):
                 candidates = example["candidates"]
                 for idx, cantidate in enumerate(candidates):
                     new_example = dict()
-                    new_example["sentence1"] = example["content"]
-                    new_example["sentence2"] = "位置#idiom#处的成语应该填写" + cantidate
+                    new_example["sentence1"] = example["content"].replace(
+                        "#idiom#", cantidate)
+                    #new_example["sentence1"] = example["content"]
+                    #new_example["sentence2"] = "位置#idiom#处的成语应该填写" + cantidate
                     examples.append(new_example)
 
         return MapDataset(examples)

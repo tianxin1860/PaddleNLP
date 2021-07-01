@@ -114,6 +114,7 @@ def do_predict(model, tokenizer, data_loader, label_normalize_dict):
     label_length = len(normed_labels[0])
 
     y_pred_labels = []
+    y_pred_probs = []
 
     for batch in tqdm(data_loader):
         src_ids, token_type_ids, masked_positions = batch
@@ -153,14 +154,17 @@ def do_predict(model, tokenizer, data_loader, label_normalize_dict):
         for index in range(label_length):
             y_pred *= prediction_probs[:, index, label_ids[:, index]]
 
+        y_pred_probs.append(y_pred)
         # Get max probs label's index
         y_pred_index = np.argmax(y_pred, axis=-1)
 
         for index in y_pred_index:
             y_pred_labels.append(origin_labels[index])
 
+    y_pred_probs = np.concatenate(y_pred_probs, axis=0)
     model.train()
-    return y_pred_labels
+    # y_pred: probs
+    return y_pred_labels, y_pred_probs
 
 
 @paddle.no_grad()
@@ -181,6 +185,8 @@ def do_predict_chid(model, tokenizer, data_loader, label_normalize_dict):
     label_length = len(normed_labels[0])
 
     y_pred_all = []
+    y_pred_probs = []
+
     for batch in data_loader:
         src_ids, token_type_ids, masked_positions, candidate_label_ids = batch
 
@@ -239,7 +245,13 @@ def do_predict_chid(model, tokenizer, data_loader, label_normalize_dict):
         # Get max probs label's index
         y_pred_index = np.argmax(y_pred, axis=-1)
         y_pred_all.extend(y_pred_index)
-    return y_pred_all
+        y_pred_probs.append(y_pred)
+
+    y_pred_probs = np.concatenate(y_pred_probs, axis=0)
+
+    model.train()
+    
+    return y_pred_all, y_pred_probs
 
 
 predict_file = {
@@ -266,82 +278,186 @@ unlabeled_file_dict = {
     "tnews": "unlabeled.json"
 }
 
-def write_iflytek(task_name, output_file, pred_labels):
-    test_ds, train_few_all = load_dataset(
-        "fewclue", name="iflytek", splits=("test", "train_few_all"))
+def write_iflytek(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
+    if is_test:
+        test_ds, train_few_all = load_dataset(
+            "fewclue", name="iflytek", splits=("test", "train_few_all"))
 
-    def label2id(train_few_all):
-        label2id = {}
-        for example in train_few_all:
-            label = example["label_des"]
-            label_id = example["label"]
-            if label not in label2id:
-                label2id[label] = str(label_id)
-        return label2id
+        def label2id(train_few_all):
+            label2id = {}
+            for example in train_few_all:
+                label = example["label_des"]
+                label_id = example["label"]
+                if label not in label2id:
+                    label2id[label] = str(label_id)
+            return label2id
 
-    label2id_dict = label2id(train_few_all)
+        label2id_dict = label2id(train_few_all)
 
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = label2id_dict[pred_labels[idx]]
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = label2id_dict[pred_labels[idx]]
 
-            str_test_example = json.dumps(test_example) + "\n"
-            f.write(str_test_example)
+                str_test_example = json.dumps(test_example) + "\n"
+                f.write(str_test_example)
+    else:
+        test_ds, train_few_all = load_dataset(
+            "fewclue", name="iflytek", splits=("unlabeled", "train_few_all"))
 
+        def label2id(train_few_all):
+            label2id = {}
+            for example in train_few_all:
+                label = example["label_des"]
+                label_id = example["label"]
+                if label not in label2id:
+                    label2id[label] = str(label_id)
+            return label2id
 
-def write_bustm(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name="bustm", splits=("test"))
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = pred_labels[idx]
-            str_test_example = json.dumps(test_example) + "\n"
-            f.write(str_test_example)
+        label2id_dict = label2id(train_few_all)
 
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = label2id_dict[pred_labels[idx]]
+                test_example["label_des"] = pred_labels[idx]
+                test_example["sentence"] = example["sentence"]
 
-def write_csldcp(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name="csldcp", splits=("test"))
-    test_example = {}
-
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = pred_labels[idx]
-            # {"id": 0, "label": "力学"}
-            str_test_example = "\"{}\": {}, \"{}\": \"{}\"".format(
-                "id", test_example['id'], "label", test_example["label"])
-            f.write("{" + str_test_example + "}\n")
-
-
-def write_tnews(task_name, output_file, pred_labels):
-    test_ds, train_few_all = load_dataset(
-        "fewclue", name="tnews", splits=("test", "train_few_all"))
-
-    def label2id(train_few_all):
-        label2id = {}
-        for example in train_few_all:
-            label = example["label_desc"]
-            label_id = example["label"]
-            if label not in label2id:
-                label2id[label] = str(label_id)
-        return label2id
-
-    label2id_dict = label2id(train_few_all)
-
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = label2id_dict[pred_labels[idx]]
-
-            str_test_example = json.dumps(test_example) + "\n"
-            f.write(str_test_example)
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+        return None
 
 
-def write_cluewsc(task_name, output_file, pred_labels):
+def write_bustm(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
+    if is_test:
+        test_ds = load_dataset("fewclue", name="bustm", splits=("test"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                str_test_example = json.dumps(test_example) + "\n"
+                f.write(str_test_example)
+    else:
+        test_ds = load_dataset("fewclue", name="bustm", splits=("unlabeled"))
+
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                test_example["sentence1"] = example["sentence1"]
+                test_example["sentence2"] = example["sentence2"]
+
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+        return None
+
+def write_csldcp(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
+    if is_test:
+        test_ds = load_dataset("fewclue", name="csldcp", splits=("test"))
+        test_example = {}
+
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                # {"id": 0, "label": "力学"}
+                str_test_example = "\"{}\": {}, \"{}\": \"{}\"".format(
+                    "id", test_example['id'], "label", test_example["label"])
+                f.write("{" + str_test_example + "}\n")
+    else:
+        test_ds = load_dataset("fewclue", name="csldcp", splits=("unlabeled"))
+        test_example = {}
+
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                test_example["content"] = example["content"]
+                # {"id": 0, "label": "力学"}
+
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+
+                # str_test_example = "\"{}\": {}, \"{}\": \"{}\"".format(
+                #     "id", test_example['id'], "label", test_example["label"])
+                # f.write("{" + str_test_example + "}\n")
+        return None
+
+
+def write_tnews(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
+
+    if is_test:
+        test_ds, train_few_all = load_dataset(
+            "fewclue", name="tnews", splits=("test", "train_few_all"))
+
+        def label2id(train_few_all):
+            label2id = {}
+            for example in train_few_all:
+                label = example["label_desc"]
+                label_id = example["label"]
+                if label not in label2id:
+                    label2id[label] = str(label_id)
+            return label2id
+
+        label2id_dict = label2id(train_few_all)
+
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = label2id_dict[pred_labels[idx]]
+
+                str_test_example = json.dumps(test_example) + "\n"
+                f.write(str_test_example)
+    else:
+        test_ds, train_few_all = load_dataset(
+            "fewclue", name="tnews", splits=("unlabeled", "train_few_all"))
+
+        def label2id(train_few_all):
+            label2id = {}
+            for example in train_few_all:
+                label = example["label_desc"]
+                label_id = example["label"]
+                if label not in label2id:
+                    label2id[label] = str(label_id)
+            return label2id
+
+        label2id_dict = label2id(train_few_all)
+
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = label2id_dict[pred_labels[idx]]
+                test_example["label_desc"] = pred_labels[idx]
+                test_example['sentence'] = example['sentence']
+                
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+        return None
+
+
+def write_cluewsc(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
     test_ds = load_dataset("fewclue", name="cluewsc", splits=("test"))
     test_example = {}
     with open(output_file, 'w', encoding='utf-8') as f:
@@ -354,7 +470,7 @@ def write_cluewsc(task_name, output_file, pred_labels):
             f.write("{" + str_test_example + "}\n")
 
 
-def write_eprstmt(task_name, output_file, pred_labels, is_test=True):
+def write_eprstmt(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
     # predict for test.json
     if is_test:
         test_ds = load_dataset("fewclue", name="eprstmt", splits=("test"))
@@ -370,9 +486,7 @@ def write_eprstmt(task_name, output_file, pred_labels, is_test=True):
     else:
         #predict for unlabeled.json
         test_ds = load_dataset("fewclue", name="eprstmt", splits=("unlabeled"))
-        #test_ds = load_dataset("fewclue", name="eprstmt", data_files="/home/tianxin04/.paddlenlp/datasets/FewCLUE/fewclue_eprstmt/unlabeled_demo.json")
 
-        #unlabeled_examples = []
         all_examples = []
         with open(output_file, 'w', encoding='utf-8') as f:
             for idx, example in enumerate(test_ds):
@@ -381,45 +495,106 @@ def write_eprstmt(task_name, output_file, pred_labels, is_test=True):
                 test_example["sentence"] = example["sentence"]
                 test_example["label"] = pred_labels[idx]
 
-                #str_test_example = json.dumps(test_example)
-                str_test_example = str(test_example)
-                f.write(str_test_example + "\n")
-                all_examples.append(test_example)
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                    all_examples.append(test_example)
+                else:
+                    continue
         return all_examples
 
-def write_ocnli(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name="ocnli", splits=("test"))
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = pred_labels[idx]
-            str_test_example = json.dumps(test_example)
-            f.write(str_test_example + "\n")
+def write_ocnli(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
+    if is_test:
+        test_ds = load_dataset("fewclue", name="ocnli", splits=("test"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                str_test_example = json.dumps(test_example)
+                f.write(str_test_example + "\n")
+    else:
+        test_ds = load_dataset("fewclue", name="ocnli", splits=("unlabeled"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                test_example["sentence1"] =  example["sentence1"]
+                test_example["sentence2"] =  example["sentence2"]
+
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+
+                # str_test_example = json.dumps(test_example)
+                # f.write(str_test_example + "\n")
+        return None
 
 
-def write_csl(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name="csl", splits=("test"))
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["label"] = pred_labels[idx]
-            str_test_example = json.dumps(test_example)
-            f.write(str_test_example + "\n")
+def write_csl(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
+    if is_test:
+        test_ds = load_dataset("fewclue", name="csl", splits=("test"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                str_test_example = json.dumps(test_example)
+                f.write(str_test_example + "\n")
+    else:
+        test_ds = load_dataset("fewclue", name="csl", splits=("unlabeled"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["label"] = pred_labels[idx]
+                test_example["abst"] = example["abst"]
+                test_example["keyword"] = example["keyword"]
+
+                prob = max(probs[idx])
+                if prob >= min_prob:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+                # str_test_example = json.dumps(test_example)
+                # f.write(str_test_example + "\n")
+        return None
 
 
-def write_chid(task_name, output_file, pred_labels):
-    test_ds = load_dataset("fewclue", name="chid", splits=("test"))
-    test_example = {}
-    with open(output_file, 'w', encoding='utf-8') as f:
-        for idx, example in enumerate(test_ds):
-            test_example["id"] = example["id"]
-            test_example["answer"] = pred_labels[idx]
-            str_test_example = "\"{}\": {}, \"{}\": {}".format(
-                "id", test_example['id'], "answer", test_example["answer"])
-            f.write("{" + str_test_example + "}\n")
-
+def write_chid(task_name, output_file, pred_labels, probs, is_test=True, min_prob=0.7):
+    if is_test:
+        test_ds = load_dataset("fewclue", name="chid", splits=("test"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["answer"] = pred_labels[idx]
+                str_test_example = "\"{}\": {}, \"{}\": {}".format(
+                    "id", test_example['id'], "answer", test_example["answer"])
+                f.write("{" + str_test_example + "}\n")
+    else:
+        test_ds = load_dataset("fewclue", name="chid", splits=("unlabeled"))
+        test_example = {}
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for idx, example in enumerate(test_ds):
+                test_example["id"] = example["id"]
+                test_example["answer"] = pred_labels[idx]
+                test_example["candidates"] = example["candidates"]
+                test_example["content"] = example["content"]
+       
+                prob = max(probs[idx])
+                if prob >= 0.005:
+                    str_test_example = str(test_example)
+                    f.write(str_test_example + "\n")
+                else:
+                    continue
+        return None
 
 write_fn = {
     "bustm": write_bustm,
