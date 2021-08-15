@@ -40,6 +40,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--task_name", required=True, type=str, help="The task_name to be evaluated")
 parser.add_argument("--p_embedding_num", type=int, default=1, help="number of p-embedding")
 parser.add_argument("--batch_size", default=32, type=int, help="Batch size per GPU/CPU for training.")
+parser.add_argument("--index", default="0", type=str, help="index for FewCLUE train_set")
+parser.add_argument("--output_dir", default="./output", type=str, help="output_dir")
 parser.add_argument("--learning_rate", default=1e-5, type=float, help="The initial learning rate for Adam.")
 parser.add_argument("--save_dir", default='./checkpoint', type=str, help="The output directory where the model checkpoints will be written.")
 parser.add_argument("--max_seq_length", default=128, type=int, help="The maximum total input sequence length after tokenization. "
@@ -84,7 +86,7 @@ def do_train():
     train_ds, dev_ds, public_test_ds = load_dataset(
         "fewclue",
         name=args.task_name,
-        splits=("train_0", "dev_0", "test_public"))
+        splits=("train_" + args.index, "dev_" + args.index, "test_public"))
 
     # Task related transform operations, eg: numbert label -> text_label, english -> chinese
     transform_fn = partial(
@@ -210,6 +212,7 @@ def do_train():
         print("epoch:{}, test_accuracy:{:.3f}, total_num:{}".format(
             epoch, test_accuracy, total_num))
 
+        """
         if rank == 0:
             save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
             if not os.path.exists(save_dir):
@@ -217,6 +220,7 @@ def do_train():
             save_param_path = os.path.join(save_dir, 'model_state.pdparams')
             paddle.save(model.state_dict(), save_param_path)
             tokenizer.save_pretrained(save_dir)
+        """
 
 
 if __name__ == "__main__":

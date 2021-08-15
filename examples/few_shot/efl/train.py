@@ -48,6 +48,11 @@ def parse_args():
         type=int,
         help="Batch size per GPU/CPU for training.")
     parser.add_argument(
+        "--index",
+        default="0",
+        type=str,
+        help="index for FewCLUE train_set")
+    parser.add_argument(
         "--negative_num",
         default=1,
         type=int,
@@ -124,10 +129,10 @@ def do_train():
 
     set_seed(args.seed)
 
-    train_ds, public_test_ds, test_ds = load_dataset(
+    train_ds, dev_ds, public_test_ds = load_dataset(
         "fewclue",
         name=args.task_name,
-        splits=("train_0", "test_public", "test"))
+        splits=("train_" + args.index, "dev_" + args.index, "test_public"))
 
     model = ppnlp.transformers.ErnieForSequenceClassification.from_pretrained(
         'ernie-1.0', num_classes=2)
@@ -137,10 +142,10 @@ def do_train():
     train_ds = processor.get_train_datasets(train_ds,
                                             TASK_LABELS_DESC[args.task_name])
 
+    dev_ds = processor.get_dev_datasets(dev_ds,
+                                          TASK_LABELS_DESC[args.task_name])
     public_test_ds = processor.get_dev_datasets(
         public_test_ds, TASK_LABELS_DESC[args.task_name])
-    test_ds = processor.get_test_datasets(test_ds,
-                                          TASK_LABELS_DESC[args.task_name])
 
     # [src_ids, token_type_ids, labels]
     batchify_fn = lambda samples, fn=Tuple(
@@ -149,26 +154,21 @@ def do_train():
         Stack(dtype="int64"),  # labels
     ): [data for data in fn(samples)]
 
-    # [src_ids, token_type_ids]
-    predict_batchify_fn = lambda samples, fn=Tuple(
-        Pad(axis=0, pad_val=tokenizer.pad_token_id),  # src_ids
-        Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # token_type_ids
-    ): [data for data in fn(samples)]
-
     trans_func = partial(
         convert_example,
         tokenizer=tokenizer,
         max_seq_length=args.max_seq_length)
 
-    predict_trans_func = partial(
-        convert_example,
-        tokenizer=tokenizer,
-        max_seq_length=args.max_seq_length,
-        is_test=True)
-
     train_data_loader = create_dataloader(
         train_ds,
         mode='train',
+        batch_size=args.batch_size,
+        batchify_fn=batchify_fn,
+        trans_fn=trans_func)
+
+    dev_data_loader = create_dataloader(
+        dev_ds,
+        mode='eval',
         batch_size=args.batch_size,
         batchify_fn=batchify_fn,
         trans_fn=trans_func)
@@ -179,13 +179,6 @@ def do_train():
         batch_size=args.batch_size,
         batchify_fn=batchify_fn,
         trans_fn=trans_func)
-
-    test_data_loader = create_dataloader(
-        test_ds,
-        mode='eval',
-        batch_size=args.batch_size,
-        batchify_fn=predict_batchify_fn,
-        trans_fn=predict_trans_func)
 
     if args.init_from_ckpt and os.path.isfile(args.init_from_ckpt):
         state_dict = paddle.load(args.init_from_ckpt)
@@ -245,36 +238,44 @@ def do_train():
             lr_scheduler.step()
             optimizer.clear_grad()
 
+        dev_accuracy, total_num = do_evaluate(
+            model,
+            tokenizer,
+            dev_data_loader,
+            task_label_description=TASK_LABELS_DESC[args.task_name])
+
+        print("epoch:{}, dev_accuracy:{:.3f}, total_num:{}".format(
+            epoch, dev_accuracy, total_num))
+            
         test_public_accuracy, total_num = do_evaluate(
             model,
             tokenizer,
             public_test_data_loader,
             task_label_description=TASK_LABELS_DESC[args.task_name])
-
-        print("epoch:{}, dev_accuracy:{:.3f}, total_num:{}".format(
+        print("epoch:{}, test_public_accuracy:{:.3f}, total_num:{}".format(
             epoch, test_public_accuracy, total_num))
 
-        y_pred_labels = do_predict(
-            model,
-            tokenizer,
-            test_data_loader,
-            task_label_description=TASK_LABELS_DESC[args.task_name])
+        # y_pred_labels = do_predict(
+        #     model,
+        #     tokenizer,
+        #     test_data_loader,
+        #     task_label_description=TASK_LABELS_DESC[args.task_name])
 
-        if not os.path.exists(args.output_dir):
-            os.makedirs(args.output_dir)
+        # if not os.path.exists(args.output_dir):
+        #     os.makedirs(args.output_dir)
 
-        output_file = os.path.join(args.output_dir,
-                                   str(epoch) + predict_file[args.task_name])
+        # output_file = os.path.join(args.output_dir,
+        #                            str(epoch) + predict_file[args.task_name])
 
-        write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
+        # write_fn[args.task_name](args.task_name, output_file, y_pred_labels)
 
-        if rank == 0:
-            save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
-            save_param_path = os.path.join(save_dir, 'model_state.pdparams')
-            paddle.save(model.state_dict(), save_param_path)
-            tokenizer.save_pretrained(save_dir)
+        # if rank == 0:
+        #     save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
+        #     if not os.path.exists(save_dir):
+        #         os.makedirs(save_dir)
+        #     save_param_path = os.path.join(save_dir, 'model_state.pdparams')
+        #     paddle.save(model.state_dict(), save_param_path)
+        #     tokenizer.save_pretrained(save_dir)
 
 
 if __name__ == "__main__":
