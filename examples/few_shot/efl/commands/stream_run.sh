@@ -1,15 +1,18 @@
 
 # running on 10.9.189.4
-#bash commands/train_all.sh tnews 1 &
-#bash commands/train_all.sh bustm 2 &
-#bash commands/train_all.sh eprstmt 3 &
-#bash commands/train_all.sh iflytek 5 &
+# done
+#bash commands/train_all_efl.sh bustm 2 &
+#bash commands/train_all_efl.sh eprstmt 3 &
+#bash commands/train_all_efl.sh cluewsc 3 &
+#bash commands/train_all_efl.sh tnews 1 &
+#bash commands/train_all_efl.sh chid 4 &
+#bash commands/train_all_efl.sh ocnli 6 &
 
-#bash commands/train_all.sh cluewsc 3 &
-#bash commands/train_all.sh chid 5 &
-#bash commands/train_all.sh ocnli 3 &
-
+# running
+#bash commands/train_all_efl.sh iflytek 5 &
+bash commands/train_all_efl.sh csldcp 4 &
 
 # running on 139
+# only index_0
 #bash commands/train_all.sh csldcp 6 &
 #bash commands/train_all.sh csl 7 &

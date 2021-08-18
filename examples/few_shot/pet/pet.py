@@ -57,22 +57,15 @@ def do_train(args):
     predict_fn = do_predict if args.task_name != "chid" else do_predict_chid
 
     # load dataset
-    train_ds, public_test_ds, test_ds = load_dataset(
+    train_ds, dev_ds, public_test_ds = load_dataset(
         "fewclue",
         name=args.task_name,
-        splits=("train_0", "test_public", "test"))
+        splits=("train_" + args.index, "dev_" + args.index, "test_public"))
 
     # Task related transform operations, eg: numbert label -> text_label, english -> chinese
     transform_fn = partial(
         transform_fn_dict[args.task_name],
         label_normalize_dict=label_norm_dict,
-        pattern_id=args.pattern_id)
-
-    # Task related transform operations, eg: numbert label -> text_label, english -> chinese
-    transform_test_fn = partial(
-        transform_fn_dict[args.task_name],
-        label_normalize_dict=label_norm_dict,
-        is_test=True,
         pattern_id=args.pattern_id)
 
     # Some fewshot_learning strategy is defined by transform_fn
@@ -81,8 +74,8 @@ def do_train(args):
     # iterate multi-times for train_ds
 
     train_ds = train_ds.map(transform_fn, lazy=False)
+    dev_ds = dev_ds.map(transform_fn, lazy=False)
     public_test_ds = public_test_ds.map(transform_fn, lazy=False)
-    test_ds = test_ds.map(transform_test_fn, lazy=False)
 
     # dataloader
     if args.task_name == "chid":
@@ -93,25 +86,6 @@ def do_train(args):
             Stack(dtype="int64"),  # masked_positions
             Stack(dtype="int64"),  # masked_lm_labels
             Stack(dtype="int64"),  # candidate_labels_ids [candidate_num, label_length]
-        ): [data for data in fn(samples)]
-        batchify_test_fn = lambda samples, fn=Tuple(
-            Pad(axis=0, pad_val=tokenizer.pad_token_id),  # src_ids
-            Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # token_type_ids
-            Stack(dtype="int64"),  # masked_positions
-            Stack(dtype="int64"),  # candidate_labels_ids [candidate_num, label_length]
-        ): [data for data in fn(samples)]
-    elif args.task_name == "cluewsc":
-        batchify_fn = lambda samples, fn=Tuple(
-            Pad(axis=0, pad_val=tokenizer.pad_token_id),  # src_ids
-            Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # token_type_ids
-            Stack(dtype="int64"),  # masked_positions
-            Stack(dtype="int64"),  # masked_lm_labels
-        ): [data for data in fn(samples)]
-        batchify_test_fn = lambda samples, fn=Tuple(
-            Pad(axis=0, pad_val=tokenizer.pad_token_id),  # src_ids
-            Pad(axis=0, pad_val=tokenizer.pad_token_type_id),  # token_type_ids
-            Stack(dtype="int64"),  # masked_positions
-            Stack(dtype="int64"),  # masked_positions
         ): [data for data in fn(samples)]
     else:
         # [src_ids, token_type_ids, masked_positions, masked_lm_labels]
@@ -132,12 +106,6 @@ def do_train(args):
         tokenizer=tokenizer,
         max_seq_length=args.max_seq_length)
 
-    trans_test_func = partial(
-        convert_example_fn,
-        tokenizer=tokenizer,
-        max_seq_length=args.max_seq_length,
-        is_test=True)
-
     train_data_loader = create_dataloader(
         train_ds,
         mode='train',
@@ -152,12 +120,12 @@ def do_train(args):
         batchify_fn=batchify_fn,
         trans_fn=trans_func)
 
-    test_data_loader = create_dataloader(
-        test_ds,
+    dev_data_loader = create_dataloader(
+        dev_ds,
         mode='eval',
         batch_size=args.batch_size,
-        batchify_fn=batchify_test_fn,
-        trans_fn=trans_test_func)
+        batchify_fn=batchify_fn,
+        trans_fn=trans_func)
 
     num_training_steps = len(train_data_loader) * args.epochs
 
@@ -222,19 +190,23 @@ def do_train(args):
             lr_scheduler.step()
             optimizer.clear_grad()
 
-        if rank == 0:
-            save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir)
-            save_param_path = os.path.join(save_dir, 'model_state.pdparams')
-            paddle.save(model.state_dict(), save_param_path)
-            tokenizer.save_pretrained(save_dir)
+        # if rank == 0:
+        #     save_dir = os.path.join(args.save_dir, "model_%d" % global_step)
+        #     if not os.path.exists(save_dir):
+        #         os.makedirs(save_dir)
+        #     save_param_path = os.path.join(save_dir, 'model_state.pdparams')
+        #     paddle.save(model.state_dict(), save_param_path)
+        #     tokenizer.save_pretrained(save_dir)
+
+        dev_accuracy, total_num = evaluate_fn(
+            model, tokenizer, dev_data_loader, label_norm_dict)
+        print("epoch:{}, dev_accuracy:{:.3f}, total_num:{}".format(
+            epoch, dev_accuracy, total_num))
 
         test_accuracy, total_num = evaluate_fn(
             model, tokenizer, public_test_data_loader, label_norm_dict)
         print("epoch:{}, test_accuracy:{:.3f}, total_num:{}".format(
             epoch, test_accuracy, total_num))
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

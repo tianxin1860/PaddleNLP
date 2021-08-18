@@ -13,4 +13,5 @@
 #bash commands/train_all.sh iflytek 7 &
 #bash commands/train_all.sh csldcp 6 &
 #bash commands/train_all.sh chid 5 &
+
 bash commands/train_all.sh csl 4 &

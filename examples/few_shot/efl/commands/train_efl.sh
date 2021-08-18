@@ -36,11 +36,16 @@ epoch=10
 
 
 if [[ ${task_name} == "csldcp" ]]; then
-        neg_nums=(1 33 66)
+        neg_nums=(66)
+        batch_size=(16)
+        learning_rate=(1E-5)
 elif [[ ${task_name} == "tnews" ]]; then
         neg_nums=(1 7 14)
 elif [[ ${task_name} == "iflytek" ]]; then
-        neg_nums=(1 59 118)
+        #neg_nums=(1 59 118)
+        learning_rate=(1E-5)
+        neg_nums=(59)
+        batch_size=(16)
 elif [[ ${task_name} == "ocnli" ]]; then
         neg_nums=(1 2)
 elif [[ ${task_name} == "chid" ]]; then
@@ -66,7 +71,7 @@ function train() {
 	mkdir -p ${log_dir}
 	mkdir -p ${output_dir}
 	
-	train_script="train.py"
+	train_script="efl.py"
 
 	cmd="${PYTHON_BIN} -u -m paddle.distributed.launch --gpus "${gpus}" --log_dir launch_log/${strategy}/${task_name} \
 		${train_script} \
@@ -108,7 +113,7 @@ function get_max_result() {
 	for bs in ${batch_size[@]}; do
 	for neg_num in ${neg_nums[@]}; do
 
-		strategy="bs${bs}_lr${lr}_negnum${p_num}"
+		strategy="bs${bs}_lr${lr}_negnum${neg_num}"
 		
 		output_dir="${local_log_path}/output/${strategy}/${task_name}"
 
@@ -131,4 +136,4 @@ function get_max_result() {
 }
 
 train_wrapper
-get_max_result
+#get_max_result
