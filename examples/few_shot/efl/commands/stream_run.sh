@@ -9,8 +9,8 @@
 #bash commands/train_all_efl.sh ocnli 6 &
 
 # running
-#bash commands/train_all_efl.sh iflytek 5 &
-bash commands/train_all_efl.sh csldcp 4 &
+bash commands/train_all_efl.sh iflytek 5 &
+#bash commands/train_all_efl.sh csldcp 4 &
 
 # running on 139
 # only index_0

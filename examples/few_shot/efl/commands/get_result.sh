@@ -31,7 +31,7 @@
 #task_name="csl"
 #gpus=7
 
-set -eux
+set -ux
 
 export pretrained_model="ernie1p0"
 task_name=$1
