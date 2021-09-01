@@ -36,11 +36,17 @@ epoch=10
 
 
 if [[ ${task_name} == "csldcp" ]]; then
-        neg_nums=(1 33 66)
+        #neg_nums=(1 33 66)
+        neg_nums=(66)
+        batch_size=(16)
+        learning_rate=(1E-5)
 elif [[ ${task_name} == "tnews" ]]; then
         neg_nums=(1 7 14)
 elif [[ ${task_name} == "iflytek" ]]; then
-        neg_nums=(1 59 118)
+        #neg_nums=(1 59 118)
+        neg_nums=(59)
+        batch_size=(16)
+        learning_rate=(1E-5)
 elif [[ ${task_name} == "ocnli" ]]; then
         neg_nums=(1 2)
 elif [[ ${task_name} == "chid" ]]; then
