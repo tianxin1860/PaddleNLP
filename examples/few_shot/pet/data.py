@@ -229,12 +229,6 @@ def transform_iflytek(example,
 
         if pattern_id == 0:
             example["sentence1"] = u'作为一款<unk>应用，' + example["sentence"]
-        elif pattern_id == 1:
-            example["sentence1"] = u'这是一款<unk>应用！' + example["sentence"]
-        elif pattern_id == 2:
-            example["sentence1"] = example["sentence"] + u'。 和<unk>有关'
-        elif pattern_id == 3:
-            example["sentence1"] = example["sentence"] + u'。 这是<unk>!'
         del example["sentence"]
 
         return example
@@ -254,13 +248,6 @@ def transform_iflytek(example,
 
         if pattern_id == 0:
             example["sentence1"] = u'作为一款<unk>应用，' + example["sentence"]
-        elif pattern_id == 1:
-            example["sentence1"] = u'这是一款<unk>应用！' + example["sentence"]
-        elif pattern_id == 2:
-            example["sentence1"] = example["sentence"] + u'。 和<unk>有关'
-        elif pattern_id == 3:
-            example["sentence1"] = example["sentence"] + u'。 这是<unk>!'
-
         del example["sentence"]
         del example["label_des"]
 
@@ -275,13 +262,8 @@ def transform_tnews(example,
         example["label_length"] = 2
 
         if pattern_id == 0:
-            example["sentence1"] = example["sentence"] + u'。 这是<unk>的内容！'
-        elif pattern_id == 1:
-            example["sentence1"] = example["sentence"] + u'。 这是<unk>！'
-        elif pattern_id == 2:
-            example["sentence1"] = example["sentence"] + u'。 包含了<unk>的内容'
-        elif pattern_id == 3:
-            example["sentence1"] = example["sentence"] + u'。 综合来讲是<unk>的内容！'
+            example["sentence1"] = u'下面报道一则<unk>新闻。' + example["sentence"]
+      
         del example["sentence"]
         return example
     else:
@@ -290,13 +272,7 @@ def transform_tnews(example,
         example['label_desc'] = label_normalize_dict[origin_label]
 
         if pattern_id == 0:
-            example["sentence1"] = example["sentence"] + u'。 这是<unk>的内容！'
-        elif pattern_id == 1:
-            example["sentence1"] = example["sentence"] + u'。 这是<unk>！'
-        elif pattern_id == 2:
-            example["sentence1"] = example["sentence"] + u'。 包含了<unk>的内容'
-        elif pattern_id == 3:
-            example["sentence1"] = example["sentence"] + u'。 综合来讲是<unk>的内容！'
+            example["sentence1"] = u'下面报道一则<unk>新闻。' + example["sentence"]
 
         example["text_label"] = example["label_desc"]
 
@@ -314,13 +290,7 @@ def transform_eprstmt(example,
         example["label_length"] = 1
 
         if pattern_id == 0:
-            example["sentence1"] = u'感觉很<unk>！' + example["sentence"]
-        elif pattern_id == 1:
-            example["sentence1"] = u'综合来讲很<unk>！，' + example["sentence"]
-        elif pattern_id == 2:
-            example["sentence1"] = example["sentence"] + u'感觉非常<unk>'
-        elif pattern_id == 3:
-            example["sentence1"] = example["sentence"] + u'， 我感到非常<unk>'
+            example["sentence1"] = u'<unk>满意' + example["sentence"]
 
         return example
     else:
@@ -329,13 +299,7 @@ def transform_eprstmt(example,
         example['text_label'] = label_normalize_dict[origin_label]
 
         if pattern_id == 0:
-            example["sentence1"] = u'感觉很<unk>！' + example["sentence"]
-        elif pattern_id == 1:
-            example["sentence1"] = u'综合来讲很<unk>！，' + example["sentence"]
-        elif pattern_id == 2:
-            example["sentence1"] = example["sentence"] + u'感觉非常<unk>'
-        elif pattern_id == 3:
-            example["sentence1"] = example["sentence"] + u'， 我感到非常<unk>'
+            example["sentence1"] = u'<unk>满意' + example["sentence"]
 
         del example["sentence"]
         del example["label"]
@@ -350,28 +314,14 @@ def transform_ocnli(example,
     if is_test:
         example["label_length"] = 2
         if pattern_id == 0:
-            example['sentence1'] = example['sentence1'] + "， <unk>"
-        elif pattern_id == 1:
-            example["sentence2"] = "和" + example['sentence2'] + u"？看来<unk>一句话"
-        elif pattern_id == 2:
-            example["sentence1"] = "和" + example['sentence2'] + u"？<unk>一样"
-        elif pattern_id == 3:
-            example["sentence2"] = "和" + example['sentence2'] + u"？<unk>一句话"
-
+            example['sentence1'] = example['sentence1'] + "？<unk>，"
         return example
     else:
         origin_label = example["label"]
         # Normalize some of the labels, eg. English -> Chinese
         example['text_label'] = label_normalize_dict[origin_label]
         if pattern_id == 0:
-            example['sentence1'] = example['sentence1'] + "， <unk>"
-        elif pattern_id == 1:
-            example["sentence2"] = "和" + example['sentence2'] + u"？看来<unk>一句话"
-        elif pattern_id == 2:
-            example["sentence1"] = "和" + example['sentence2'] + u"？<unk>一样"
-        elif pattern_id == 3:
-            example["sentence2"] = "和" + example['sentence2'] + u"？<unk>一句话"
-
+            example['sentence1'] = example['sentence1'] + "？<unk>，"
         del example["label"]
 
         return example
@@ -382,21 +332,10 @@ def transform_csl(example,
                   is_test=False,
                   pattern_id=0):
     if is_test:
-        example["label_length"] = 1
+        example["label_length"] = 2
 
         if pattern_id == 0:
-            example["sentence1"] = u"本文的关键词<unk>是:" + "，".join(example[
-                "keyword"]) + example["abst"]
-        elif pattern_id == 1:
-            example["sentence1"] = example[
-                "abst"] + u"。本文的关键词<unk>是:" + "，".join(example["keyword"])
-        elif pattern_id == 2:
-            example["sentence1"] = u"本文的内容<unk>是:" + "，".join(example[
-                "keyword"]) + example["abst"]
-        elif pattern_id == 3:
-            example["sentence1"] = example[
-                "abst"] + u"。本文的内容<unk>是:" + "，".join(example["keyword"])
-
+            example["sentence1"] = u"<unk>用" + "，".join(example["keyword"]) + u"概括" + example["abst"]
         del example["abst"]
         del example["keyword"]
 
@@ -407,17 +346,7 @@ def transform_csl(example,
         example['text_label'] = label_normalize_dict[origin_label]
 
         if pattern_id == 0:
-            example["sentence1"] = u"本文的关键词<unk>是:" + "，".join(example[
-                "keyword"]) + example["abst"]
-        elif pattern_id == 1:
-            example["sentence1"] = example[
-                "abst"] + u"。本文的关键词<unk>是:" + "，".join(example["keyword"])
-        elif pattern_id == 2:
-            example["sentence1"] = u"本文的内容<unk>是:" + "，".join(example[
-                "keyword"]) + example["abst"]
-        elif pattern_id == 3:
-            example["sentence1"] = example[
-                "abst"] + u"。本文的内容<unk>是:" + "，".join(example["keyword"])
+            example["sentence1"] = u"<unk>用" + "，".join(example["keyword"]) + u"概括" + example["abst"]
 
         del example["label"]
         del example["abst"]
@@ -434,13 +363,7 @@ def transform_csldcp(example,
         example["label_length"] = 2
 
         if pattern_id == 0:
-            example["sentence1"] = u'这篇关于<unk>的文章讲了' + example["content"]
-        elif pattern_id == 1:
-            example["sentence1"] = example["content"] + u'和<unk>息息相关'
-        elif pattern_id == 2:
-            example["sentence1"] = u'这是一篇和<unk>息息相关的文章' + example["content"]
-        elif pattern_id == 3:
-            example["sentence1"] = u'很多很多<unk>的文章！' + example["content"]
+            example["sentence1"] = u'这篇论文阐述了<unk>' + example["content"]
 
         del example["content"]
         return example
@@ -450,14 +373,7 @@ def transform_csldcp(example,
         normalized_label = label_normalize_dict[origin_label]
         example['text_label'] = normalized_label
         if pattern_id == 0:
-            example["sentence1"] = u'这篇关于<unk>的文章讲了' + example["content"]
-        elif pattern_id == 1:
-            example["sentence1"] = example["content"] + u'和<unk>息息相关'
-        elif pattern_id == 2:
-            example["sentence1"] = u'这是一篇和<unk>息息相关的文章' + example["content"]
-        elif pattern_id == 3:
-            example["sentence1"] = u'很多很多<unk>的文章！' + example["content"]
-
+            example["sentence1"] = u'这篇论文阐述了<unk>' + example["content"]
         del example["label"]
         del example["content"]
 
@@ -472,14 +388,8 @@ def transform_bustm(example,
         # Label: ["很"， "不"]
         example["label_length"] = 1
         if pattern_id == 0:
-            example['sentence1'] = "<unk>是一句话. " + example['sentence1'] + "，"
-        elif pattern_id == 1:
-            example['sentence2'] = "，" + example['sentence2'] + "。<unk>是一句话. "
-        elif pattern_id == 2:
-            example['sentence1'] = "讲的<unk>是一句话。" + example['sentence1'] + "，"
-        elif pattern_id == 3:
-            example['sentence1'] = "，" + example['sentence2'] + "。讲的<unk>是一句话. "
-
+            #example['sentence1'] = "<unk>是一句话. " + example['sentence1'] + "，"
+            example['sentence2'] = "和" + example['sentence2'] + "意思<unk>同"
         return example
     else:
         origin_label = str(example["label"])
@@ -487,16 +397,8 @@ def transform_bustm(example,
         # Normalize some of the labels, eg. English -> Chinese
         example['text_label'] = label_normalize_dict[origin_label]
         if pattern_id == 0:
-            example['sentence1'] = "<unk>是一句话. " + example['sentence1'] + "，"
-        elif pattern_id == 1:
-            example['sentence2'] = "，" + example['sentence2'] + "。<unk>是一句话. "
-        elif pattern_id == 2:
-            example['sentence1'] = "讲的<unk>是一句话。" + example['sentence1'] + "，"
-        elif pattern_id == 3:
-            example['sentence1'] = "，" + example['sentence2'] + "。讲的<unk>是一句话. "
-
+            example['sentence2'] = "和" + example['sentence2'] + "意思<unk>同"
         del example["label"]
-
         return example
 
 
@@ -534,16 +436,15 @@ def transform_cluewsc(example,
         text = example["text"]
         span1_text = example["target"]["span1_text"]
         span2_text = example["target"]["span2_text"]
+        
+        text_list=[x for x in text] # 转化为单个字的list
+        text_list.insert(span2_index + len(span2_text),"（这是代词）") # text_new=乔的叔叔仍然可以在网球上击败他（代词），即便他年长他30岁。
+        text_list.insert(span1_index + len(span1_text),"（这是实体）") # text_new=乔（这是实体）的叔叔仍然可以在网球上击败他（代词），即便他年长他30岁。
+        text = "".join(text_list)
 
         # example["sentence1"] = text.replace(span2_text, span1_text)
         if pattern_id == 0:
-            example["sentence1"] = text + span2_text + "<unk>地指代" + span1_text
-        elif pattern_id == 1:
-            example["sentence1"] = text + span2_text + "<unk>地意味着" + span1_text
-        elif pattern_id == 2:
-            example["sentence1"] = text + span2_text + "<unk>地代表" + span1_text
-        elif pattern_id == 3:
-            example["sentence1"] = text + span2_text + "<unk>地表示了" + span1_text
+            example["sentence1"] =  u'下面句子的指代关系正确吗？<unk>。' + text
         del example["text"]
         # del example["target"]
 
@@ -552,20 +453,21 @@ def transform_cluewsc(example,
         origin_label = example["label"]
         # Normalize some of the labels, eg. English -> Chinese
         example['text_label'] = label_normalize_dict[origin_label]
-        # example['text_label'] = origin_label
         text = example["text"]
         span1_text = example["target"]["span1_text"]
         span2_text = example["target"]["span2_text"]
+        span1_index = example["target"]["span1_index"]
+        span2_index = example["target"]["span2_index"]
+
+        text_list=[x for x in text] # 转化为单个字的list
+        text_list.insert(span2_index + len(span2_text),"（这是代词）") # text_new=乔的叔叔仍然可以在网球上击败他（代词），即便他年长他30岁。
+        text_list.insert(span1_index + len(span1_text),"（这是实体）") # text_new=乔（这是实体）的叔叔仍然可以在网球上击败他（代词），即便他年长他30岁。
+        text = "".join(text_list)
 
         # example["sentence1"] = text.replace(span2_text, span1_text)
         if pattern_id == 0:
-            example["sentence1"] = text + span2_text + "<unk>地指代" + span1_text
-        elif pattern_id == 1:
-            example["sentence1"] = text + span2_text + "<unk>地意味着" + span1_text
-        elif pattern_id == 2:
-            example["sentence1"] = text + span2_text + "<unk>地代表" + span1_text
-        elif pattern_id == 3:
-            example["sentence1"] = text + span2_text + "<unk>地表示了" + span1_text
+            example["sentence1"] =  u'下面句子的指代关系正确吗？<unk>。' + text
+            print(example["sentence1"])
 
         del example["label"]
         del example["text"]

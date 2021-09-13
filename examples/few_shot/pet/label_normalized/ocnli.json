@@ -1,5 +1,5 @@
 {
-"entailment": "很",
-"contradiction": "不",
-"neutral": "无"
+"entailment": "是的",
+"contradiction": "不是",
+"neutral": "并且"
 }
