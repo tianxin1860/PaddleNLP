@@ -30,10 +30,10 @@ index=$3
 max_seq_len=512
 
 
-batch_size=(8 16)
-p_embedding_num=(1 8 16)
-learning_rate=(1E-5 5E-5 2.5E-4)
-epoch=10
+batch_size=(16)
+p_embedding_num=(9)
+learning_rate=(3E-5)
+epoch=20
 
 
 # for debug
@@ -123,5 +123,5 @@ function get_max_result() {
 	> ${local_log_path}/output/index${index}_${task_name}_result_final
 }
 
-train_wrapper
-#get_max_result
+#train_wrapper
+get_max_result

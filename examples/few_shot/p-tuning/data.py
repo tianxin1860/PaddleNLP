@@ -307,8 +307,7 @@ def transform_csl(example, label_normalize_dict=None, is_test=False):
         # Normalize some of the labels, eg. English -> Chinese
         example['text_label'] = label_normalize_dict[origin_label]
 
-        example["sentence1"] = "本文的关键词是:" + "，".join(example[
-            "keyword"]) + example["abst"]
+        example["sentence1"] =  example["abst"][:200]  + "的关键词是" + "，".join(example["keyword"])
 
         del example["label"]
         del example["abst"]
@@ -393,7 +392,15 @@ def transform_cluewsc(example, label_normalize_dict=None, is_test=False):
         text = example["text"]
         span1_text = example["target"]["span1_text"]
         span2_text = example["target"]["span2_text"]
-        example["sentence1"] = text + span2_text + "指代" + span1_text
+        span1_index = example["target"]["span1_index"]
+        span2_index = example["target"]["span2_index"]
+
+        text_list=[x for x in text] # 转化为单个字的list
+        text_list.insert(span2_index + len(span2_text),"（这是代词）") # text_new=乔的叔叔仍然可以在网球上击败他（代词），即便他年长他30岁。
+        text_list.insert(span1_index + len(span1_text),"（这是实体）") # text_new=乔（这是实体）的叔叔仍然可以在网球上击败他（代词），即便他年长他30岁。
+        text = "".join(text_list)
+
+        example["sentence1"] = text
 
         del example["label"]
         del example["text"]
