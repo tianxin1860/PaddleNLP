@@ -267,7 +267,7 @@ class ErnieModel(ErniePretrainedModel):
                  num_hidden_layers=12,
                  num_attention_heads=12,
                  intermediate_size=3072,
-                 hidden_act="gelu",
+                 hidden_act="relu",
                  hidden_dropout_prob=0.1,
                  attention_probs_dropout_prob=0.1,
                  max_position_embeddings=512,
@@ -290,7 +290,8 @@ class ErnieModel(ErniePretrainedModel):
             activation=hidden_act,
             attn_dropout=attention_probs_dropout_prob,
             act_dropout=0,
-            weight_attr=weight_attr, )
+            weight_attr=weight_attr,
+            normalize_before=False)
         self.encoder = nn.TransformerEncoder(encoder_layer, num_hidden_layers)
         self.pooler = ErniePooler(hidden_size, weight_attr)
         self.apply(self.init_weights)
@@ -366,12 +367,13 @@ class ErnieModel(ErniePretrainedModel):
         if attention_mask is None:
             attention_mask = paddle.unsqueeze(
                 (input_ids == self.pad_token_id
-                 ).astype(self.pooler.dense.weight.dtype) * -1e9,
+                 ).astype(self.pooler.dense.weight.dtype) * -1e4,
                 axis=[1, 2])
         embedding_output = self.embeddings(
             input_ids=input_ids,
             position_ids=position_ids,
             token_type_ids=token_type_ids)
+
         encoder_outputs = self.encoder(embedding_output, attention_mask)
         sequence_output = encoder_outputs
         pooled_output = self.pooler(sequence_output)

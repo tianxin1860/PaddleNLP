@@ -200,7 +200,6 @@ def do_predict(args):
     print(model.ptm.encoder.layers[0]._config)
 
     if args.use_fp16:
-        #convert_fp16(model, for_paddle=True)
         convert_fp16(model)
 
     model = enable_faster_encoder(model)
