@@ -27,6 +27,7 @@ from paddlenlp.datasets import load_dataset
 from paddlenlp.data import Stack, Tuple, Pad
 
 from data import read_text_pair, convert_example, create_dataloader
+from utils import convert_fp16
 from base_model import SemanticIndexBase
 
 # yapf: disable
@@ -112,8 +113,7 @@ if __name__ == "__main__":
         "ernie-1.0")
 
     model = SemanticIndexBase(
-        pretrained_model, output_emb_size=args.output_emb_size)
-
+        pretrained_model, output_emb_size=args.output_emb_size, use_fp16=args.use_fp16)
 
     if args.params_path and os.path.isfile(args.params_path):
         state_dict = paddle.load(args.params_path)
@@ -126,6 +126,9 @@ if __name__ == "__main__":
 
     print("model config:**********************")
     print(model.ptm.encoder.layers[0]._config)
+
+    if args.use_fp16:
+        convert_fp16(model, for_paddle=True)
 
     cosin_sim = predict(model, valid_data_loader)
 

@@ -26,10 +26,10 @@ from paddlenlp.transformers import ErnieTokenizer, ErnieModel
 from paddlenlp.data import Pad, Tuple
 from paddlenlp.datasets import load_dataset
 from paddlenlp.ops import enable_faster_encoder, disable_faster_encoder
-
 from paddlenlp.ops.faster_transformer.transformer.decoding import transfer_param
 
 from data import read_text_pair, convert_example, create_dataloader
+from utils import convert_fp16
 
 
 def parse_args():
@@ -158,47 +158,6 @@ class SemanticIndexingPredictor(nn.Layer):
             raise ValueError(
                 "Please set --params_path with correct pretrained model file")
 
-def convert_fp16(model):
-    #print(model)
-    model.ptm.pooler.dense.weight = transfer_param(model.ptm.pooler.dense.weight, restore_data=True)
-    model.ptm.pooler.dense.bias = transfer_param(model.ptm.pooler.dense.bias, restore_data=True)
-    model.emb_reduce_linear.weight = transfer_param(model.emb_reduce_linear.weight, restore_data=True)
-    model.emb_reduce_linear.bias = transfer_param(model.emb_reduce_linear.bias, restore_data=True)
-    encoder_layers = model.ptm.encoder.layers
-    #print("encoder layers before convert:{}".format(encoder_layers))
-    for mod in encoder_layers:
-        mod.norm1.weight = transfer_param(mod.norm1.weight, restore_data=True)
-        mod.norm1.bias = transfer_param(mod.norm1.bias, is_bias=True, restore_data=True)
-        mod.linear1.weight = transfer_param(mod.linear1.weight, restore_data=True)
-        mod.linear1.bias = transfer_param(mod.linear1.bias, is_bias=True, restore_data=True)
-
-        #print("mod.self_attn.q_proj.weight before convert:{}".format(mod.self_attn.q_proj.weight))
-        mod.self_attn.q_proj.weight = transfer_param(
-        mod.self_attn.q_proj.weight, restore_data=True)
-        #print("mod.self_attn.q_proj.weight after convert:{}".format(mod.self_attn.q_proj.weight))
-        mod.self_attn.q_proj.bias = transfer_param(
-        mod.self_attn.q_proj.bias, is_bias=True, restore_data=True)
-        mod.self_attn.k_proj.weight = transfer_param(
-        mod.self_attn.k_proj.weight, restore_data=True)
-        mod.self_attn.k_proj.bias = transfer_param(
-        mod.self_attn.k_proj.bias, is_bias=True, restore_data=True)
-        mod.self_attn.v_proj.weight = transfer_param(
-        mod.self_attn.v_proj.weight, restore_data=True)
-        mod.self_attn.v_proj.bias = transfer_param(
-        mod.self_attn.v_proj.bias, is_bias=True, restore_data=True)
-        mod.self_attn.out_proj.weight = transfer_param(
-        mod.self_attn.out_proj.weight, restore_data=True)
-        mod.self_attn.out_proj.bias = transfer_param(
-        mod.self_attn.out_proj.bias, is_bias=True, restore_data=True)
-
-        mod.norm2.weight = transfer_param(mod.norm2.weight, restore_data=True)
-        mod.norm2.bias = transfer_param(mod.norm2.bias, is_bias=True, restore_data=True)
-        mod.linear2.weight = transfer_param(mod.linear1.weight, restore_data=True)
-        mod.linear2.bias = transfer_param(mod.linear1.bias, is_bias=True, restore_data=True)
-    
-    encoder_layers = model.ptm.encoder.layers
-    #print("encoder layers after convert:{}".format(encoder_layers))
-
 
 def do_predict(args):
     place = paddle.set_device("gpu")
@@ -241,6 +200,7 @@ def do_predict(args):
     print(model.ptm.encoder.layers[0]._config)
 
     if args.use_fp16:
+        #convert_fp16(model, for_paddle=True)
         convert_fp16(model)
 
     model = enable_faster_encoder(model)
