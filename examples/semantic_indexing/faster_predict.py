@@ -27,6 +27,8 @@ from paddlenlp.data import Pad, Tuple
 from paddlenlp.datasets import load_dataset
 from paddlenlp.ops import enable_faster_encoder, disable_faster_encoder
 
+from paddlenlp.ops.faster_transformer.transformer.decoding import transfer_param
+
 from data import read_text_pair, convert_example, create_dataloader
 
 
@@ -66,13 +68,17 @@ def parse_args():
         "--pad_to_max_seq_len",
         action="store_true",
         help="Whether to pad to max_seq_len.")
+    parser.add_argument(
+        "--use_fp16",
+        action="store_true",
+        help="Whether to use fp16.")
 
     args = parser.parse_args()
     return args
 
 
 class SemanticIndexingPredictor(nn.Layer):
-    def __init__(self, pretrained_model, output_emb_size, bos_id=0, dropout=0):
+    def __init__(self, pretrained_model, output_emb_size, bos_id=0, dropout=0, use_fp16=False):
         super(SemanticIndexingPredictor, self).__init__()
         self.bos_id = bos_id
         self.ptm = pretrained_model
@@ -84,6 +90,8 @@ class SemanticIndexingPredictor(nn.Layer):
             self.emb_reduce_linear = paddle.nn.Linear(
                 768, output_emb_size, weight_attr=weight_attr)
 
+        self.use_fp16 = use_fp16
+
     def get_pooled_embedding(self,
                              input_ids,
                              token_type_ids=None,
@@ -91,6 +99,7 @@ class SemanticIndexingPredictor(nn.Layer):
                              attention_mask=None):
         src_mask = (input_ids != self.bos_id
                     ).astype(self.ptm.encoder.layers[0].norm1.bias.dtype)
+        # [bs, 1, 1, max_len]
         src_mask = paddle.unsqueeze(src_mask, axis=[1, 2])
         src_mask.stop_gradient = True
 
@@ -103,12 +112,19 @@ class SemanticIndexingPredictor(nn.Layer):
             input_ids=input_ids,
             position_ids=position_ids,
             token_type_ids=token_type_ids)
+
+        if self.use_fp16:
+            embedding_output = paddle.cast(embedding_output, 'float16')    
+            src_mask = paddle.cast(src_mask, 'float16')
+            #print("embedding_output in fp16:{}".format(embedding_output))
+
         sequence_output = self.ptm.encoder(embedding_output, src_mask)
         cls_embedding = self.ptm.pooler(sequence_output)
 
         if self.output_emb_size > 0:
             cls_embedding = self.emb_reduce_linear(cls_embedding)
         cls_embedding = self.dropout(cls_embedding)
+        cls_embedding = paddle.cast(cls_embedding, "float32")
         cls_embedding = F.normalize(cls_embedding, p=2, axis=-1)
 
         return cls_embedding
@@ -128,6 +144,7 @@ class SemanticIndexingPredictor(nn.Layer):
         title_cls_embedding = self.get_pooled_embedding(
             title_input_ids, title_token_type_ids, title_position_ids,
             title_attention_mask)
+
         cosine_sim = paddle.sum(query_cls_embedding * title_cls_embedding,
                                 axis=-1)
         return cosine_sim
@@ -140,6 +157,47 @@ class SemanticIndexingPredictor(nn.Layer):
         else:
             raise ValueError(
                 "Please set --params_path with correct pretrained model file")
+
+def convert_fp16(model):
+    #print(model)
+    model.ptm.pooler.dense.weight = transfer_param(model.ptm.pooler.dense.weight, restore_data=True)
+    model.ptm.pooler.dense.bias = transfer_param(model.ptm.pooler.dense.bias, restore_data=True)
+    model.emb_reduce_linear.weight = transfer_param(model.emb_reduce_linear.weight, restore_data=True)
+    model.emb_reduce_linear.bias = transfer_param(model.emb_reduce_linear.bias, restore_data=True)
+    encoder_layers = model.ptm.encoder.layers
+    #print("encoder layers before convert:{}".format(encoder_layers))
+    for mod in encoder_layers:
+        mod.norm1.weight = transfer_param(mod.norm1.weight, restore_data=True)
+        mod.norm1.bias = transfer_param(mod.norm1.bias, is_bias=True, restore_data=True)
+        mod.linear1.weight = transfer_param(mod.linear1.weight, restore_data=True)
+        mod.linear1.bias = transfer_param(mod.linear1.bias, is_bias=True, restore_data=True)
+
+        #print("mod.self_attn.q_proj.weight before convert:{}".format(mod.self_attn.q_proj.weight))
+        mod.self_attn.q_proj.weight = transfer_param(
+        mod.self_attn.q_proj.weight, restore_data=True)
+        #print("mod.self_attn.q_proj.weight after convert:{}".format(mod.self_attn.q_proj.weight))
+        mod.self_attn.q_proj.bias = transfer_param(
+        mod.self_attn.q_proj.bias, is_bias=True, restore_data=True)
+        mod.self_attn.k_proj.weight = transfer_param(
+        mod.self_attn.k_proj.weight, restore_data=True)
+        mod.self_attn.k_proj.bias = transfer_param(
+        mod.self_attn.k_proj.bias, is_bias=True, restore_data=True)
+        mod.self_attn.v_proj.weight = transfer_param(
+        mod.self_attn.v_proj.weight, restore_data=True)
+        mod.self_attn.v_proj.bias = transfer_param(
+        mod.self_attn.v_proj.bias, is_bias=True, restore_data=True)
+        mod.self_attn.out_proj.weight = transfer_param(
+        mod.self_attn.out_proj.weight, restore_data=True)
+        mod.self_attn.out_proj.bias = transfer_param(
+        mod.self_attn.out_proj.bias, is_bias=True, restore_data=True)
+
+        mod.norm2.weight = transfer_param(mod.norm2.weight, restore_data=True)
+        mod.norm2.bias = transfer_param(mod.norm2.bias, is_bias=True, restore_data=True)
+        mod.linear2.weight = transfer_param(mod.linear1.weight, restore_data=True)
+        mod.linear2.bias = transfer_param(mod.linear1.bias, is_bias=True, restore_data=True)
+    
+    encoder_layers = model.ptm.encoder.layers
+    #print("encoder layers after convert:{}".format(encoder_layers))
 
 
 def do_predict(args):
@@ -173,9 +231,18 @@ def do_predict(args):
     pretrained_model = ErnieModel.from_pretrained("ernie-1.0")
 
     model = SemanticIndexingPredictor(
-        pretrained_model, args.output_emb_size, dropout=args.dropout)
+        pretrained_model, args.output_emb_size, dropout=args.dropout, use_fp16=args.use_fp16)
+
+
     model.eval()
     model.load(args.params_path)
+
+    print("model config:**********************")
+    print(model.ptm.encoder.layers[0]._config)
+
+    if args.use_fp16:
+        convert_fp16(model)
+
     model = enable_faster_encoder(model)
     cosine_sims = []
     for batch_data in valid_data_loader:

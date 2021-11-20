@@ -39,6 +39,7 @@ parser.add_argument("--batch_size", default=32, type=int, help="Batch size per G
 parser.add_argument("--output_emb_size", default=None, type=int, help="output_embedding_size")
 parser.add_argument('--device', choices=['cpu', 'gpu'], default="gpu", help="Select which device to train model, defaults to gpu.")
 parser.add_argument("--pad_to_max_seq_len", action="store_true", help="Whether to pad to max seq length.")
+parser.add_argument("--use_fp16", action="store_true", help="Whether to use_fp16")
 args = parser.parse_args()
 # yapf: enable
 
@@ -113,13 +114,18 @@ if __name__ == "__main__":
     model = SemanticIndexBase(
         pretrained_model, output_emb_size=args.output_emb_size)
 
+
     if args.params_path and os.path.isfile(args.params_path):
         state_dict = paddle.load(args.params_path)
+        #print("init_checkpoint state_dict:{}".format(state_dict))
         model.set_dict(state_dict)
         print("Loaded parameters from %s" % args.params_path)
     else:
         raise ValueError(
             "Please set --params_path with correct pretrained model file")
+
+    print("model config:**********************")
+    print(model.ptm.encoder.layers[0]._config)
 
     cosin_sim = predict(model, valid_data_loader)
 

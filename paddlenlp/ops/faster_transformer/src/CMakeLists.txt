@@ -258,7 +258,7 @@ else(ON_INFER)
   endif()
 
   set(ft_lib_link
-    -ldecoder -ldecoding -ltopk -lcuda_int8_kernels -lcuda_kernels -lonline_softmax_beamsearch -ltransformer_kernels -lnccl_utils -lnvtx_utils
+    -ldecoder -ldecoding -ltopk -lcuda_int8_kernels -lcuda_kernels -lonline_softmax_beamsearch -ltransformer_kernels -lattention_kernels -lencoder -lnccl_utils -lnvtx_utils
   )
 
   add_definitions(-DPADDLE_WITH_CUDA)
