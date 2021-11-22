@@ -25,13 +25,13 @@ option(WITH_GPU         "Compiled with GPU/CPU, default use CPU."               
 option(WITH_MKL         "Compile with MKL. Only works when ON_INFER is ON."         ON)
 option(USE_TENSORRT     "Compiled with TensorRT."                                   OFF)
 option(WITH_TRANSFORMER "Compiled with Transformer."                                ON)
-option(WITH_GPT         "Compiled with GPT."                                        OFF)
+option(WITH_GPT         "Compiled with GPT."                                        ON)
 option(WITH_UNIFIED     "Compiled with Unified Transformer."                        OFF)
 option(WITH_SP          "Compiled with sentencepiece. Only works when WITH_GPT and ON_INFER is ON." OFF)
 option(WITH_DECODER     "Compile with Transformer Decoder"                          OFF)
-option(WITH_ENCODER     "Compile with Transformer Encoder"                          ON)
+option(WITH_ENCODER     "Compile with Transformer Encoder"                          OFF)
 option(WITH_STATIC_LIB  "Compile static lib"                                        OFF)
-option(WITH_BART        "Compile with BART"                                         OFF)
+option(WITH_BART        "Compile with BART"                                         ON)
 
 if(NOT WITH_GPU)
   message(FATAL_ERROR "Faster transformer custom op doesn't support CPU. Please add the flag -DWITH_GPU=ON to use GPU. ")
@@ -236,9 +236,6 @@ set(OPS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 file(TO_NATIVE_PATH ${OPS_SOURCE_DIR}/patches/FasterTransformer/fastertransformer/utils/allocator.h allocator_src)
 file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}/fastertransformer/utils/allocator.h allocator_dst)
 
-file(TO_NATIVE_PATH ${OPS_SOURCE_DIR}/patches/FasterTransformer/fastertransformer/utils/functions.h functions_h_src)
-file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}/fastertransformer/utils/functions.h functions_h_dst)
-
 file(TO_NATIVE_PATH ${OPS_SOURCE_DIR}/patches/FasterTransformer/fastertransformer/utils/common.h common_src)
 file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}/fastertransformer/utils/common.h common_dst)
 
@@ -280,12 +277,6 @@ file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}
 file(TO_NATIVE_PATH ${OPS_SOURCE_DIR}/patches/FasterTransformer/fastertransformer/cuda/topk_kernels.cuh topk_kernels_cuh_src)
 file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}/fastertransformer/cuda/topk_kernels.cuh topk_kernels_cuh_dst)
 
-file(TO_NATIVE_PATH ${OPS_SOURCE_DIR}/patches/FasterTransformer/fastertransformer/cuda/open_attention.h open_attention_h_src)
-file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}/fastertransformer/cuda/open_attention.h open_attention_h_dst)
-
-file(TO_NATIVE_PATH ${OPS_SOURCE_DIR}/patches/FasterTransformer/fastertransformer/cuda/transformer_kernels.cu transformer_kernels_cu_src)
-file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}/fastertransformer/cuda/transformer_kernels.cu transformer_kernels_cu_dst)
-
 file(TO_NATIVE_PATH ${OPS_SOURCE_DIR}/patches/FasterTransformer/fastertransformer/bert_encoder_transformer.h bert_encoder_transformer_h_src)
 file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}/fastertransformer/bert_encoder_transformer.h bert_encoder_transformer_h_dst)
 
@@ -312,7 +303,6 @@ set(FT_PATCH_COMMAND
   && cp ${sampling_h_src} ${trans_dst}
   && cp ${arguments_h_src} ${arguments_h_dst}
   && cp ${open_decoder_h_src} ${open_decoder_h_dst}
-  && cp ${transformer_kernels_cu_src} ${transformer_kernels_cu_dst}
   && cp ${standard_encoder_h_src} ${standard_encoder_h_dst}
   && cp ${bert_encoder_transformer_h_src} ${bert_encoder_transformer_h_dst}
   && cat blank_lines ${cuda_kernels_h_src} >> ${cuda_kernels_h_dst}
@@ -323,10 +313,6 @@ set(FT_PATCH_COMMAND
   && cat blank_lines ${trans_decoding_kernels_cu_src} >> ${decoding_kernels_cu_dst}
   && ${MUTE_COMMAND}
 )
-
-
-  #&& cp ${functions_h_src} ${functions_h_dst}
-  #&& cp ${open_attention_h_src} ${open_attention_h_dst}
 
 # TODO: Add these patch into FT_PATCH_COMMAND
 #[[

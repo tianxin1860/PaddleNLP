@@ -436,7 +436,11 @@ public:
 
     try
     {
-      sm_ = getSMVersion();
+     
+      //sm_ = getSMVersion();
+      //Set fake sm_ which have no effect.
+      sm_ = 70;
+
       if (sm_ >= 80){
         use_ORDER_COL32_2R_4R4_ = true;
       }

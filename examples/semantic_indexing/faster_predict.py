@@ -17,6 +17,7 @@ from functools import partial
 import argparse
 from pprint import pprint
 import numpy as np
+import time
 
 import paddle
 import paddle.nn as nn
@@ -116,7 +117,6 @@ class SemanticIndexingPredictor(nn.Layer):
         if self.use_fp16:
             embedding_output = paddle.cast(embedding_output, 'float16')    
             src_mask = paddle.cast(src_mask, 'float16')
-            #print("embedding_output in fp16:{}".format(embedding_output))
 
         sequence_output = self.ptm.encoder(embedding_output, src_mask)
         cls_embedding = self.ptm.pooler(sequence_output)
@@ -191,36 +191,35 @@ def do_predict(args):
 
     model = SemanticIndexingPredictor(
         pretrained_model, args.output_emb_size, dropout=args.dropout, use_fp16=args.use_fp16)
-
-
     model.eval()
     model.load(args.params_path)
-
-    print("model config:**********************")
-    print(model.ptm.encoder.layers[0]._config)
 
     if args.use_fp16:
         convert_fp16(model)
 
     model = enable_faster_encoder(model)
     cosine_sims = []
+    total_time = 0
     for batch_data in valid_data_loader:
         query_input_ids, query_token_type_ids, title_input_ids, title_token_type_ids = batch_data
         query_input_ids = paddle.to_tensor(query_input_ids)
         query_token_type_ids = paddle.to_tensor(query_token_type_ids)
         title_input_ids = paddle.to_tensor(title_input_ids)
         title_token_type_ids = paddle.to_tensor(title_token_type_ids)
+        time_begin = time.time()
         batch_cosine_sim = model(
             query_input_ids=query_input_ids,
             title_input_ids=title_input_ids,
             query_token_type_ids=query_token_type_ids,
             title_token_type_ids=title_token_type_ids).numpy()
+        total_time += time.time() - time_begin
         cosine_sims.append(batch_cosine_sim)
 
     cosine_sims = np.concatenate(cosine_sims, axis=0)
     for cosine in cosine_sims:
         print('{}'.format(cosine))
     model = disable_faster_encoder(model)
+    print("total forward time:{}".format(total_time))
 
 
 if __name__ == "__main__":

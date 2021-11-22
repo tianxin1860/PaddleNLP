@@ -59,6 +59,7 @@ def predict(model, data_loader):
 
     model.eval()
 
+    total_time = 0
     with paddle.no_grad():
         for batch_data in data_loader:
             query_input_ids, query_token_type_ids, title_input_ids, title_token_type_ids = batch_data
@@ -68,17 +69,19 @@ def predict(model, data_loader):
             title_input_ids = paddle.to_tensor(title_input_ids)
             title_token_type_ids = paddle.to_tensor(title_token_type_ids)
 
+            begin_time = time.time()
             batch_cosine_sim = model.cosine_sim(
                 query_input_ids=query_input_ids,
                 title_input_ids=title_input_ids,
                 query_token_type_ids=query_token_type_ids,
                 title_token_type_ids=title_token_type_ids).numpy()
+            total_time += time.time() - begin_time
 
             cosine_sims.append(batch_cosine_sim)
 
         cosine_sims = np.concatenate(cosine_sims, axis=0)
 
-        return cosine_sims
+        return cosine_sims, total_time
 
 
 if __name__ == "__main__":
@@ -117,20 +120,17 @@ if __name__ == "__main__":
 
     if args.params_path and os.path.isfile(args.params_path):
         state_dict = paddle.load(args.params_path)
-        #print("init_checkpoint state_dict:{}".format(state_dict))
         model.set_dict(state_dict)
         print("Loaded parameters from %s" % args.params_path)
     else:
         raise ValueError(
             "Please set --params_path with correct pretrained model file")
 
-    print("model config:**********************")
-    print(model.ptm.encoder.layers[0]._config)
-
     if args.use_fp16:
         convert_fp16(model, for_paddle=True)
 
-    cosin_sim = predict(model, valid_data_loader)
+    cosin_sim, total_time = predict(model, valid_data_loader)
 
     for idx, cosine in enumerate(cosin_sim):
         print('{}'.format(cosine))
+    print("total forward time:{}".format(total_time))

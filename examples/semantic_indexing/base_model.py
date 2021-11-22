@@ -53,16 +53,11 @@ class SemanticIndexBase(nn.Layer):
                 (input_ids == self.ptm.pad_token_id
                  ).astype(self.ptm.pooler.dense.weight.dtype) * -1e4,
                 axis=[1, 2])
-                #print("[DEBUG]attention_mask val in paddlenlp is 1e4")
 
             embedding_output = self.ptm.embeddings(
                 input_ids=input_ids,
                 position_ids=position_ids,
                 token_type_ids=token_type_ids)
-
-            # print("embedding_output:{}".format(embedding_output))
-            # print("attention_mask:{}".format(attention_mask))
-            # print(self.ptm.encoder)
 
             embedding_output = paddle.cast(embedding_output, 'float16')    
             attention_mask = paddle.cast(attention_mask, 'float16')

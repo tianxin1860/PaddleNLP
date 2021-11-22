@@ -244,9 +244,9 @@ def load(name, build_dir=None, force=False, verbose=False, **kwargs):
         if not force:
             ext_sources = extension.sources
             if os.path.exists(ext_filepath) and not newer_group(
-                     ext_sources, ext_filepath, 'newer'):
+                    ext_sources, ext_filepath, 'newer'):
                 logger.debug("skipping '%s' extension (up-to-date) build" %
-                            name)
+                             name)
                 return load_op_meta_info_and_register_op(ext_filepath)
 
     # write setup file and jit compile
