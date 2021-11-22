@@ -17,7 +17,6 @@ import argparse
 import sys
 import os
 import random
-import time
 
 import numpy as np
 import paddle
@@ -25,9 +24,9 @@ import paddle.nn.functional as F
 import paddlenlp as ppnlp
 from paddlenlp.datasets import load_dataset
 from paddlenlp.data import Stack, Tuple, Pad
+from paddlenlp.ops import convert_to_fp16
 
 from data import read_text_pair, convert_example, create_dataloader
-from utils import convert_fp16
 from base_model import SemanticIndexBase
 
 # yapf: disable
@@ -59,7 +58,6 @@ def predict(model, data_loader):
 
     model.eval()
 
-    total_time = 0
     with paddle.no_grad():
         for batch_data in data_loader:
             query_input_ids, query_token_type_ids, title_input_ids, title_token_type_ids = batch_data
@@ -69,19 +67,17 @@ def predict(model, data_loader):
             title_input_ids = paddle.to_tensor(title_input_ids)
             title_token_type_ids = paddle.to_tensor(title_token_type_ids)
 
-            begin_time = time.time()
             batch_cosine_sim = model.cosine_sim(
                 query_input_ids=query_input_ids,
                 title_input_ids=title_input_ids,
                 query_token_type_ids=query_token_type_ids,
                 title_token_type_ids=title_token_type_ids).numpy()
-            total_time += time.time() - begin_time
 
             cosine_sims.append(batch_cosine_sim)
 
         cosine_sims = np.concatenate(cosine_sims, axis=0)
 
-        return cosine_sims, total_time
+        return cosine_sims
 
 
 if __name__ == "__main__":
@@ -116,7 +112,9 @@ if __name__ == "__main__":
         "ernie-1.0")
 
     model = SemanticIndexBase(
-        pretrained_model, output_emb_size=args.output_emb_size, use_fp16=args.use_fp16)
+        pretrained_model,
+        output_emb_size=args.output_emb_size,
+        use_fp16=args.use_fp16)
 
     if args.params_path and os.path.isfile(args.params_path):
         state_dict = paddle.load(args.params_path)
@@ -127,10 +125,8 @@ if __name__ == "__main__":
             "Please set --params_path with correct pretrained model file")
 
     if args.use_fp16:
-        convert_fp16(model, for_paddle=True)
+        convert_to_fp16(model)
 
-    cosin_sim, total_time = predict(model, valid_data_loader)
-
+    cosin_sim = predict(model, valid_data_loader)
     for idx, cosine in enumerate(cosin_sim):
         print('{}'.format(cosine))
-    print("total forward time:{}".format(total_time))

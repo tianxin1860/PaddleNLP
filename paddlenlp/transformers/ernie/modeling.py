@@ -267,7 +267,7 @@ class ErnieModel(ErniePretrainedModel):
                  num_hidden_layers=12,
                  num_attention_heads=12,
                  intermediate_size=3072,
-                 hidden_act="relu",
+                 hidden_act="gelu",
                  hidden_dropout_prob=0.1,
                  attention_probs_dropout_prob=0.1,
                  max_position_embeddings=512,
@@ -367,7 +367,7 @@ class ErnieModel(ErniePretrainedModel):
         if attention_mask is None:
             attention_mask = paddle.unsqueeze(
                 (input_ids == self.pad_token_id
-                 ).astype(self.pooler.dense.weight.dtype) * -1e4,
+                 ).astype(self.pooler.dense.weight.dtype) * -1e9,
                 axis=[1, 2])
         embedding_output = self.embeddings(
             input_ids=input_ids,

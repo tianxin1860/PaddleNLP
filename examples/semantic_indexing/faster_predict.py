@@ -17,7 +17,6 @@ from functools import partial
 import argparse
 from pprint import pprint
 import numpy as np
-import time
 
 import paddle
 import paddle.nn as nn
@@ -30,7 +29,6 @@ from paddlenlp.ops import enable_faster_encoder, disable_faster_encoder
 from paddlenlp.ops.faster_transformer.transformer.decoding import transfer_param
 
 from data import read_text_pair, convert_example, create_dataloader
-from utils import convert_fp16
 
 
 def parse_args():
@@ -70,16 +68,19 @@ def parse_args():
         action="store_true",
         help="Whether to pad to max_seq_len.")
     parser.add_argument(
-        "--use_fp16",
-        action="store_true",
-        help="Whether to use fp16.")
+        "--use_fp16", action="store_true", help="Whether to use fp16.")
 
     args = parser.parse_args()
     return args
 
 
 class SemanticIndexingPredictor(nn.Layer):
-    def __init__(self, pretrained_model, output_emb_size, bos_id=0, dropout=0, use_fp16=False):
+    def __init__(self,
+                 pretrained_model,
+                 output_emb_size,
+                 bos_id=0,
+                 dropout=0,
+                 use_fp16=False):
         super(SemanticIndexingPredictor, self).__init__()
         self.bos_id = bos_id
         self.ptm = pretrained_model
@@ -96,8 +97,7 @@ class SemanticIndexingPredictor(nn.Layer):
     def get_pooled_embedding(self,
                              input_ids,
                              token_type_ids=None,
-                             position_ids=None,
-                             attention_mask=None):
+                             position_ids=None):
         src_mask = (input_ids != self.bos_id
                     ).astype(self.ptm.encoder.layers[0].norm1.bias.dtype)
         # [bs, 1, 1, max_len]
@@ -115,16 +115,19 @@ class SemanticIndexingPredictor(nn.Layer):
             token_type_ids=token_type_ids)
 
         if self.use_fp16:
-            embedding_output = paddle.cast(embedding_output, 'float16')    
+            embedding_output = paddle.cast(embedding_output, 'float16')
             src_mask = paddle.cast(src_mask, 'float16')
 
         sequence_output = self.ptm.encoder(embedding_output, src_mask)
+
+        if self.use_fp16:
+            sequence_output = paddle.cast(sequence_output, 'float32')
+
         cls_embedding = self.ptm.pooler(sequence_output)
 
         if self.output_emb_size > 0:
             cls_embedding = self.emb_reduce_linear(cls_embedding)
         cls_embedding = self.dropout(cls_embedding)
-        cls_embedding = paddle.cast(cls_embedding, "float32")
         cls_embedding = F.normalize(cls_embedding, p=2, axis=-1)
 
         return cls_embedding
@@ -134,16 +137,12 @@ class SemanticIndexingPredictor(nn.Layer):
                 title_input_ids,
                 query_token_type_ids=None,
                 query_position_ids=None,
-                query_attention_mask=None,
                 title_token_type_ids=None,
-                title_position_ids=None,
-                title_attention_mask=None):
+                title_position_ids=None):
         query_cls_embedding = self.get_pooled_embedding(
-            query_input_ids, query_token_type_ids, query_position_ids,
-            query_attention_mask)
+            query_input_ids, query_token_type_ids, query_position_ids)
         title_cls_embedding = self.get_pooled_embedding(
-            title_input_ids, title_token_type_ids, title_position_ids,
-            title_attention_mask)
+            title_input_ids, title_token_type_ids, title_position_ids)
 
         cosine_sim = paddle.sum(query_cls_embedding * title_cls_embedding,
                                 axis=-1)
@@ -190,36 +189,32 @@ def do_predict(args):
     pretrained_model = ErnieModel.from_pretrained("ernie-1.0")
 
     model = SemanticIndexingPredictor(
-        pretrained_model, args.output_emb_size, dropout=args.dropout, use_fp16=args.use_fp16)
+        pretrained_model,
+        args.output_emb_size,
+        dropout=args.dropout,
+        use_fp16=args.use_fp16)
     model.eval()
     model.load(args.params_path)
+    model = enable_faster_encoder(model, use_fp16=args.use_fp16)
 
-    if args.use_fp16:
-        convert_fp16(model)
-
-    model = enable_faster_encoder(model)
     cosine_sims = []
-    total_time = 0
     for batch_data in valid_data_loader:
         query_input_ids, query_token_type_ids, title_input_ids, title_token_type_ids = batch_data
         query_input_ids = paddle.to_tensor(query_input_ids)
         query_token_type_ids = paddle.to_tensor(query_token_type_ids)
         title_input_ids = paddle.to_tensor(title_input_ids)
         title_token_type_ids = paddle.to_tensor(title_token_type_ids)
-        time_begin = time.time()
         batch_cosine_sim = model(
             query_input_ids=query_input_ids,
             title_input_ids=title_input_ids,
             query_token_type_ids=query_token_type_ids,
             title_token_type_ids=title_token_type_ids).numpy()
-        total_time += time.time() - time_begin
         cosine_sims.append(batch_cosine_sim)
 
     cosine_sims = np.concatenate(cosine_sims, axis=0)
     for cosine in cosine_sims:
         print('{}'.format(cosine))
     model = disable_faster_encoder(model)
-    print("total forward time:{}".format(total_time))
 
 
 if __name__ == "__main__":

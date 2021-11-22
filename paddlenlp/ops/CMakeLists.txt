@@ -29,7 +29,7 @@ option(WITH_GPT         "Compiled with GPT."                                    
 option(WITH_UNIFIED     "Compiled with Unified Transformer."                        ON)
 option(WITH_SP          "Compiled with sentencepiece. Only works when WITH_GPT and ON_INFER is ON." OFF)
 option(WITH_DECODER     "Compile with Transformer Decoder"                          ON)
-option(WITH_ENCODER     "Compile with Transformer Encoder"                          OFF)
+option(WITH_ENCODER     "Compile with Transformer Encoder"                          ON)
 option(WITH_STATIC_LIB  "Compile static lib"                                        OFF)
 option(WITH_BART        "Compile with BART"                                         ON)
 
@@ -285,6 +285,8 @@ file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}
 # Encoder patches.
 file(TO_NATIVE_PATH ${OPS_SOURCE_DIR}/patches/FasterTransformer/fastertransformer/bert_encoder_transformer.h bert_encoder_transformer_h_src)
 file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}/fastertransformer/bert_encoder_transformer.h bert_encoder_transformer_h_dst)
+file(TO_NATIVE_PATH ${OPS_SOURCE_DIR}/patches/FasterTransformer/fastertransformer/standard_encoder.h standard_encoder_h_src)
+file(TO_NATIVE_PATH ${CMAKE_BINARY_DIR}/${THIRD_PATH}/source/${THIRD_PARTY_NAME}/fastertransformer/standard_encoder.h standard_encoder_h_dst)
 # Encoder patches end.
 
 # TODO(guosheng): `find` seems meeting errors missing argument to `-exec', fix it
