@@ -24,7 +24,7 @@ import yaml
 from pprint import pprint
 
 from paddlenlp.ops import FasterGPT
-from paddlenlp.transformers import GPTModel, GPTLMHeadModel
+from paddlenlp.transformers import GPTLMHeadModel
 from paddlenlp.transformers import GPTChineseTokenizer, GPTTokenizer
 
 from paddlenlp.utils.log import logger
@@ -44,12 +44,7 @@ def parse_args():
         help="The model name to specify the gpt to use. Can be one of ['gpt2-en', 'gpt2-medium-en', 'gpt-cpm-large-cn']. "
     )
     parser.add_argument(
-        "--decoding_lib",
-        default="../../../../paddlenlp/ops/build/lib/libdecoding_op.so",
-        type=str,
-        help="Path of libdecoding_op.so. ")
-    parser.add_argument(
-        "--batch_size", default=1, type=int, help="Batch size. ")
+        "--batch_size", default=4, type=int, help="Batch size. ")
     parser.add_argument(
         "--topk",
         default=4,
@@ -123,8 +118,9 @@ def do_predict(args):
                 bos_token_id=bos_id,
                 eos_token_id=eos_id,
                 decode_strategy="sampling",
-                use_fast=True)
+                use_fp16_decoding=args.use_fp16_decoding)
             output_sequence = out_seq.numpy()
+
         paddle.fluid.core._cuda_synchronize(place)
         logger.info("Average test time for decoding is %f ms" % (
             (time.time() - start) / 50 * 1000))

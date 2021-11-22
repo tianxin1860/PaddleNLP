@@ -763,14 +763,8 @@ class FasterUnifiedTransformer(UnifiedTransformerPretrainedModel):
             normalize_before=self._normalize_before,
             hidden_act=self._hidden_act)
 
-    def prepare_inputs_for_generation(self,
-                                      input_ids,
-                                      token_type_ids,
-                                      position_ids,
-                                      attention_mask,
-                                      use_cache=True,
-                                      cache=None,
-                                      **kwargs):
+    def prepare_inputs_for_generation(self, input_ids, token_type_ids,
+                                      position_ids, attention_mask, **kwargs):
         input_ids = input_ids[:, :-1]
         decoding_type_id = token_type_ids[:, -1]
         token_type_ids = token_type_ids[:, :-1]
@@ -784,7 +778,6 @@ class FasterUnifiedTransformer(UnifiedTransformerPretrainedModel):
             "position_ids": position_ids,
             "attention_mask": attention_mask,
             "use_cache": True,
-            "cache": cache,
             "seq_len": seq_len,
             "decoding_type_id": paddle.cast(
                 decoding_type_id, dtype="int32")
@@ -805,6 +798,9 @@ class FasterUnifiedTransformer(UnifiedTransformerPretrainedModel):
 
     def forward(self,
                 input_ids,
+                token_type_ids,
+                position_ids,
+                attention_mask,
                 seq_len=None,
                 max_length=128,
                 top_k=4,
@@ -816,7 +812,7 @@ class FasterUnifiedTransformer(UnifiedTransformerPretrainedModel):
                 diversity_rate=0.0,
                 temperature=1.0,
                 num_return_sequences=1,
-                **model_kwargs):
+                length_penalty=0.6):
 
         bos_token_id = bos_token_id if bos_token_id is not None else getattr(
             self._model, 'bos_token_id', None)
@@ -825,7 +821,6 @@ class FasterUnifiedTransformer(UnifiedTransformerPretrainedModel):
         pad_token_id = pad_token_id if pad_token_id is not None else getattr(
             self._model, 'pad_token_id', None)
 
-        temperature = model_kwargs.pop('temperature', 1.0)
         if seq_len is None:
             assert input_ids is not None, "You have to specify either input_ids when generating seq_len."
             seq_len = paddle.sum(paddle.cast(
@@ -833,14 +828,32 @@ class FasterUnifiedTransformer(UnifiedTransformerPretrainedModel):
                                  axis=-1,
                                  keepdim=True,
                                  dtype="int32")
-        model_kwargs["seq_len"] = seq_len
-        if self._decode_strategy.startswith("beam_search") and num_beams > 1:
+        if self._decode_strategy.startswith("beam_search"):
             input_ids, model_kwargs = self.expand_inputs_for_generation(
-                input_ids, expand_size=num_beams, **model_kwargs)
-
-        elif self._decode_strategy == "sampling" and num_return_sequences > 1:
+                input_ids,
+                expand_size=num_beams,
+                token_type_ids=token_type_ids,
+                position_ids=position_ids,
+                attention_mask=attention_mask,
+                seq_len=seq_len)
+        elif self._decode_strategy == "sampling":
             input_ids, model_kwargs = self.expand_inputs_for_generation(
-                input_ids, expand_size=num_return_sequences, **model_kwargs)
+                input_ids,
+                expand_size=num_return_sequences,
+                token_type_ids=token_type_ids,
+                position_ids=position_ids,
+                attention_mask=attention_mask,
+                seq_len=seq_len)
+        elif self._decode_strategy == "greedy_search":
+            model_kwargs = {
+                "token_type_ids": token_type_ids,
+                "position_ids": position_ids,
+                "attention_mask": attention_mask,
+                "seq_len": seq_len
+            }
+        else:
+            raise ValueError(
+                "Only greedy search, beam search and sampling are supported. ")
 
         model_inputs = self.prepare_inputs_for_generation(input_ids,
                                                           **model_kwargs)
@@ -870,6 +883,7 @@ class FasterUnifiedTransformer(UnifiedTransformerPretrainedModel):
             eos_token_id=eos_token_id,
             pad_token_id=pad_token_id,
             temperature=temperature,
+            length_penalty=length_penalty,
             decoding_type_id=decoding_type_id,
             pos_bias=True)
 
@@ -914,14 +928,8 @@ class FasterUNIMOText(UNIMOPretrainedModel):
             normalize_before=self._normalize_before,
             hidden_act=self._hidden_act)
 
-    def prepare_inputs_for_generation(self,
-                                      input_ids,
-                                      token_type_ids,
-                                      position_ids,
-                                      attention_mask,
-                                      use_cache=True,
-                                      cache=None,
-                                      **kwargs):
+    def prepare_inputs_for_generation(self, input_ids, token_type_ids,
+                                      position_ids, attention_mask, **kwargs):
         input_ids = input_ids[:, :-1]
         decoding_type_id = token_type_ids[:, -1]
         token_type_ids = token_type_ids[:, :-1]
@@ -935,7 +943,6 @@ class FasterUNIMOText(UNIMOPretrainedModel):
             "position_ids": position_ids,
             "attention_mask": attention_mask,
             "use_cache": True,
-            "cache": cache,
             "seq_len": seq_len,
             "decoding_type_id": paddle.cast(
                 decoding_type_id, dtype="int32")
@@ -956,6 +963,9 @@ class FasterUNIMOText(UNIMOPretrainedModel):
 
     def forward(self,
                 input_ids,
+                token_type_ids,
+                position_ids,
+                attention_mask,
                 seq_len=None,
                 max_length=128,
                 top_k=4,
@@ -967,7 +977,7 @@ class FasterUNIMOText(UNIMOPretrainedModel):
                 diversity_rate=0.0,
                 temperature=1.0,
                 num_return_sequences=1,
-                **model_kwargs):
+                length_penalty=0.6):
 
         bos_token_id = bos_token_id if bos_token_id is not None else getattr(
             self._model, 'bos_token_id', None)
@@ -976,7 +986,6 @@ class FasterUNIMOText(UNIMOPretrainedModel):
         pad_token_id = pad_token_id if pad_token_id is not None else getattr(
             self._model, 'pad_token_id', None)
 
-        temperature = model_kwargs.pop('temperature', 1.0)
         if seq_len is None:
             assert input_ids is not None, "You have to specify either input_ids when generating seq_len."
             seq_len = paddle.sum(paddle.cast(
@@ -984,13 +993,32 @@ class FasterUNIMOText(UNIMOPretrainedModel):
                                  axis=-1,
                                  keepdim=True,
                                  dtype="int32")
-        model_kwargs["seq_len"] = seq_len
-        if self._decode_strategy.startswith("beam_search") and num_beams > 1:
+        if self._decode_strategy.startswith("beam_search"):
             input_ids, model_kwargs = self.expand_inputs_for_generation(
-                input_ids, expand_size=num_beams, **model_kwargs)
-        elif self._decode_strategy == "sampling" and num_return_sequences > 1:
+                input_ids,
+                expand_size=num_beams,
+                token_type_ids=token_type_ids,
+                position_ids=position_ids,
+                attention_mask=attention_mask,
+                seq_len=seq_len)
+        elif self._decode_strategy == "sampling":
             input_ids, model_kwargs = self.expand_inputs_for_generation(
-                input_ids, expand_size=num_return_sequences, **model_kwargs)
+                input_ids,
+                expand_size=num_return_sequences,
+                token_type_ids=token_type_ids,
+                position_ids=position_ids,
+                attention_mask=attention_mask,
+                seq_len=seq_len)
+        elif self._decode_strategy == "greedy_search":
+            model_kwargs = {
+                "token_type_ids": token_type_ids,
+                "position_ids": position_ids,
+                "attention_mask": attention_mask,
+                "seq_len": seq_len
+            }
+        else:
+            raise ValueError(
+                "Only greedy search, beam search and sampling are supported. ")
 
         model_inputs = self.prepare_inputs_for_generation(input_ids,
                                                           **model_kwargs)
@@ -1019,6 +1047,7 @@ class FasterUNIMOText(UNIMOPretrainedModel):
             eos_token_id=eos_token_id,
             pad_token_id=pad_token_id,
             temperature=temperature,
+            length_penalty=length_penalty,
             decoding_type_id=decoding_type_id,
             pos_bias=False)
 
@@ -1067,6 +1096,7 @@ class FasterBART(BartPretrainedModel):
                 bos_token_id=None,
                 eos_token_id=None,
                 pad_token_id=None,
+                decoder_start_token_id=None,
                 max_length=256,
                 diversity_rate=0.0,
                 length_penalty=0.6,
@@ -1079,6 +1109,8 @@ class FasterBART(BartPretrainedModel):
             self._model, 'eos_token_id', None)
         pad_token_id = pad_token_id if pad_token_id is not None else getattr(
             self._model, 'pad_token_id', None)
+        decoder_start_token_id = decoder_start_token_id if decoder_start_token_id is not None else getattr(
+            self._model, 'decoder_start_token_id', None)
         self.encoder = enable_faster_encoder(self.encoder, need_build=False)
         if encoder_output is None:
             assert input_ids is not None, "You have to specify either input_ids or encoder_output."
@@ -1103,7 +1135,8 @@ class FasterBART(BartPretrainedModel):
                 expand_size=num_return_sequences,
                 seq_len=seq_len)
             seq_len = expanded_kwargs["seq_len"]
-
+        if decoder_start_token_id is not None:
+            bos_token_id = decoder_start_token_id
         return self.decoding(
             enc_output=encoder_output,
             memory_seq_lens=seq_len,

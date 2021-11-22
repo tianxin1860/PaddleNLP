@@ -65,19 +65,20 @@ std::vector<paddle::Tensor> decoding_kernel(
     paddle::Tensor& output_ids,
     paddle::Tensor& parent_ids,
     paddle::Tensor& sequence_length,
-    std::string decoding_strategy,
-    int beam_size,
-    int topk,
-    float topp,
-    int head_num_,
-    int size_per_head_,
-    int num_layer_,
-    int start_id_,
-    int end_id_,
-    int64_t max_seq_len_,
-    float beam_search_diversity_rate_,
-    float alpha,
+    const std::string& decoding_strategy,
+    const int& beam_size,
+    const int& topk,
+    const float& topp,
+    const int& head_num_,
+    const int& size_per_head_,
+    const int& num_layer_,
+    const int& start_id_,
+    const int& end_id_,
+    const int64_t& max_seq_len_,
+    const float& beam_search_diversity_rate_,
+    const float& alpha,
     cublasHandle_t cublas_handle_,
+    cublasLtHandle_t cublaslt_handle_,
     cudaStream_t stream) {
   int beam_width_ = (decoding_strategy == "beam_search" ||
                      decoding_strategy == "beam_search_v2")
@@ -107,6 +108,7 @@ std::vector<paddle::Tensor> decoding_kernel(
 
   DecodingInitParam<DataType_> decoding_params;
   decoding_params.cublas_handle = cublas_handle_;
+  decoding_params.cublaslt_handle = cublaslt_handle_;
 
   decoding_params.output_ids = output_ids.mutable_data<int>(input.place());
   decoding_params.parent_ids = parent_ids.mutable_data<int>(input.place());
@@ -127,6 +129,7 @@ std::vector<paddle::Tensor> decoding_kernel(
   for (int i = 0; i < num_layer_; i++) {
     params[i].stream = stream;
     params[i].cublas_handle = cublas_handle_;
+    params[i].cublaslt_handle = cublaslt_handle_;
 
     if (decoding_strategy == "beam_search" ||
         decoding_strategy == "beam_search_v2") {
@@ -258,7 +261,8 @@ std::vector<paddle::Tensor> decoding_kernel(
         memory_max_seq_len,
         start_id_,
         end_id_,
-        beam_search_diversity_rate_);
+        beam_search_diversity_rate_,
+        true);  // is_fuse_topk_softMax
 
     decoding_beam_search_->forward(params, decoding_params);
 
@@ -357,21 +361,23 @@ std::vector<paddle::Tensor> DecodingCUDAForward(
     paddle::Tensor& output_ids,
     paddle::Tensor& parent_ids,
     paddle::Tensor& sequence_length,
-    std::string decoding_strategy,
-    int beam_size,
-    int topk,
-    float topp,
-    int n_head,
-    int size_per_head,
-    int num_layer,
-    int bos_id,
-    int eos_id,
-    int64_t max_len,
-    float beam_search_diversity_rate,
-    float alpha) {
+    const std::string& decoding_strategy,
+    const int& beam_size,
+    const int& topk,
+    const float& topp,
+    const int& n_head,
+    const int& size_per_head,
+    const int& num_layer,
+    const int& bos_id,
+    const int& eos_id,
+    const int64_t& max_len,
+    const float& beam_search_diversity_rate,
+    const float& alpha) {
   auto stream = input.stream();
   cublasHandle_t cublas_handle_;
   cublasCreate(&cublas_handle_);
+  cublasLtHandle_t cublaslt_handle_;
+  cublasLtCreate(&cublaslt_handle_);
   cublasSetStream(cublas_handle_, stream);
 
   std::vector<paddle::Tensor> ret;
@@ -429,6 +435,7 @@ std::vector<paddle::Tensor> DecodingCUDAForward(
           beam_search_diversity_rate,
           alpha,
           cublas_handle_,
+          cublaslt_handle_,
           stream);
       break;
     }
@@ -484,6 +491,7 @@ std::vector<paddle::Tensor> DecodingCUDAForward(
           beam_search_diversity_rate,
           alpha,
           cublas_handle_,
+          cublaslt_handle_,
           stream);
       break;
     }
@@ -496,5 +504,6 @@ std::vector<paddle::Tensor> DecodingCUDAForward(
   }
 
   cublasDestroy(cublas_handle_);
+  cublasLtDestroy(cublaslt_handle_);
   return ret;
 }
