@@ -1,4 +1,4 @@
-# Ernie 1.0: Enhanced Representation through kNowledge IntEgration
+# ERNIE: Enhanced Representation through kNowledge IntEgration
 
 ERNIE是百度开创性提出的基于知识增强的持续学习语义理解框架，它将大数据预训练与多源丰富知识相结合，通过持续学习技术，不断吸收海量文本数据中词汇、结构、语义等方面的知识，实现模型效果不断进化。
 
@@ -73,7 +73,7 @@ python data_tools/trans_to_json.py  --input_path ./clue_corpus_small_14g --outpu
 现在我们得到了jsonl格式的数据集，下面是针对训练任务的数据集应用，此处以ernie为例。
 ```
 python -u  data_tools/create_pretraining_data.py \
-    --model_name ernie-1.0 \
+    --model_name ernie-1.0-base-zh \
     --tokenizer_name ErnieTokenizer \
     --input_path clue_corpus_small_14g.jsonl \
     --split_sentences\
@@ -100,7 +100,7 @@ python -u  -m paddle.distributed.launch \
     --log_dir "output/ernie-1.0-dp8-gb512/log" \
     run_pretrain.py \
     --model_type "ernie" \
-    --model_name_or_path "ernie-1.0" \
+    --model_name_or_path "ernie-1.0-base-zh" \
     --input_dir "./data" \
     --output_dir "output/ernie-1.0-dp8-gb512" \
     --max_seq_len 512 \
@@ -201,7 +201,7 @@ python run_seq_cls.py \
     --do_train \
     --do_eval \
     --do_predict \
-    --model_name_or_path ernie-1.0 \
+    --model_name_or_path ernie-1.0-base-zh \
     --dataset $dataset \
     --output_dir ./tmp/$dataset
 ```
@@ -214,7 +214,7 @@ python run_ner.py \
     --do_train \
     --do_eval \
     --do_predict \
-    --model_name_or_path ernie-1.0 \
+    --model_name_or_path ernie-1.0-base-zh \
     --dataset $dataset \
     --output_dir ./tmp/$dataset
 ```
@@ -226,7 +226,7 @@ dataset="cmrc2018"
 python run_qa.py \
     --do_train \
     --do_eval \
-    --model_name_or_path ernie-1.0 \
+    --model_name_or_path ernie-1.0-base-zh \
     --dataset $dataset \
     --output_dir ./tmp/$dataset
 ```
@@ -251,7 +251,7 @@ python run_seq_cls.py \
     --do_eval \
     --do_predict \
     --do_export \
-    --model_name_or_path ernie-1.0 \
+    --model_name_or_path ernie-1.0-base-zh \
     --dataset $dataset \
     --output_dir ./tmp/$dataset \
     --eval_steps 200 \
