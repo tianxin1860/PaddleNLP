@@ -292,8 +292,19 @@ elif [ ${MODE} = "benchmark_train" ];then
         python -m pip install h5py -i https://mirror.baidu.com/pypi/simple
     fi
 
-    if [[ ${model_name} =~ gpt* ]]; then
+    if [[ ${model_name} == "gpt2" ]]; then
         cd ../examples/language_model/gpt/data_tools/
+        sed -i "s/python3/python/g" Makefile
+        sed -i "s/python-config/python3.7m-config/g" Makefile
+        cd -
+        mkdir -p data && cd data
+        wget https://bj.bcebos.com/paddlenlp/models/transformers/gpt/data/gpt_en_dataset_300m_ids.npy -o .tmp
+        wget https://bj.bcebos.com/paddlenlp/models/transformers/gpt/data/gpt_en_dataset_300m_idx.npz -o .tmp
+        cd -
+    fi
+
+    if [[ ${model_name} == "gpt3" ]]; then
+        cd ../examples/language_model/gpt-3/data_tools/
         sed -i "s/python3/python/g" Makefile
         sed -i "s/python-config/python3.7m-config/g" Makefile
         cd -
@@ -307,6 +318,14 @@ elif [ ${MODE} = "benchmark_train" ];then
         cd ../examples/machine_translation/transformer/
 
         git checkout .
+
+        sed -i "s/^random_seed:.*/random_seed: 128/g" configs/transformer.base.yaml
+        sed -i "s/^shuffle_batch:.*/shuffle_batch: False/g" configs/transformer.base.yaml
+        sed -i "s/^shuffle:.*/shuffle: False/g" configs/transformer.base.yaml
+
+        sed -i "s/^random_seed:.*/random_seed: 128/g" configs/transformer.big.yaml
+        sed -i "s/^shuffle_batch:.*/shuffle_batch: False/g" configs/transformer.big.yaml
+        sed -i "s/^shuffle:.*/shuffle: False/g" configs/transformer.big.yaml
 
         # Data set prepared. 
         if [ ! -f WMT14.en-de.partial.tar.gz ]; then
